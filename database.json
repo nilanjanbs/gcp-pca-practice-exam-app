@@ -1,0 +1,921 @@
+{
+  "pca:seed-questions": [
+    {
+      "id": "q001",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your company is designing a globally distributed e-commerce platform that must handle Black Friday traffic spikes (10x normal load) with sub-100ms latency for users in North America, Europe, and Asia-Pacific. The platform needs 99.99% availability. The engineering team wants to minimize operational overhead. Which architecture best meets these requirements?",
+      "opts": [
+        "Deploy a single regional GKE cluster with cluster autoscaler and node auto-provisioning behind a global HTTP(S) load balancer",
+        "Deploy multi-regional Cloud Run services fronted by Cloud Armor and a global external HTTP(S) load balancer with a Cloud CDN-enabled Cloud Storage origin for static assets",
+        "Deploy GKE clusters in three regions using Anthos Fleet management, with Traffic Director for global load balancing and Spanner as the global database",
+        "Deploy Compute Engine managed instance groups in multiple regions, use HTTP(S) load balancing, and manage capacity with scheduled autoscaling policies"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Run provides serverless auto-scaling (handles 10x spikes instantly), multi-region deployment gives global coverage, Cloud Armor provides DDoS/WAF protection, and Cloud CDN reduces latency. This architecture minimizes operational overhead (serverless) vs. managing GKE clusters. Option C (Anthos + Traffic Director) is valid but increases operational complexity. Option A is single-region despite a global load balancer — no regional resilience.\n\n🔍 Targeted Search: 'GCP multi-region serverless architecture Cloud Run CDN', 'Cloud Armor DDoS protection tutorial YouTube'."
+    },
+    {
+      "id": "q002",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "A financial services company must store 500TB of customer transaction data with the following requirements: SQL interface for business analysts, strong consistency for ACID transactions, automatic geo-replication across us-central1 and europe-west1, and zero downtime during regional failures. The RTO must be under 15 minutes, RPO must be zero. Which Google Cloud database solution satisfies ALL of these requirements?",
+      "opts": [
+        "Cloud SQL with cross-region read replicas and automatic failover",
+        "Cloud Spanner with multi-region instance configuration spanning nam-eur-asia1",
+        "AlloyDB with cross-region replication and Point-in-Time Recovery enabled",
+        "Cloud Spanner with a regional instance plus Cloud SQL cross-region replica as fallback"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Spanner's multi-region configuration provides: (1) SQL interface, (2) externally-consistent (strong) ACID transactions globally, (3) synchronous replication across regions, (4) automatic failover with zero RPO. Cloud SQL read replicas are asynchronous (non-zero RPO) and require manual failover promotion. AlloyDB does not yet support multi-region active-active with zero RPO. Spanner multi-region is the only option satisfying all constraints simultaneously.\n\n🔍 Targeted Search: 'Cloud Spanner multi-region replication zero RPO', 'GCP database RTO RPO comparison documentation'."
+    },
+    {
+      "id": "q003",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your organization is migrating a legacy monolith to microservices on GKE. The team wants to implement the strangler fig pattern. During migration, both the monolith (running on Compute Engine) and new microservices (on GKE) must serve traffic. You need routing based on URL path, SSL termination, and no changes to existing DNS records. What is the recommended approach?",
+      "opts": [
+        "Use Cloud DNS weighted routing policies to distribute traffic between Compute Engine and GKE",
+        "Configure a global external Application Load Balancer with URL map rules routing /api/v2/* to GKE backends and everything else to Compute Engine backend services",
+        "Deploy an Nginx ingress on GKE that proxies requests back to Compute Engine for legacy paths",
+        "Use Cloud Endpoints as an API gateway to route between Compute Engine and GKE backends"
+      ],
+      "answer": 1,
+      "explanation": "An external Application Load Balancer (HTTP(S) LB) supports URL map routing, SSL termination, and can route to hybrid backends (Compute Engine NEGs and GKE NEGs) without DNS changes. This perfectly implements the strangler fig pattern. Cloud DNS routing policies work at DNS level and can't do path-based routing. Nginx on GKE introduces unnecessary hops and latency. Cloud Endpoints is for API management, not general HTTP routing.\n\n🔍 Targeted Search: 'GCP Strangler Fig pattern migration External Application Load Balancer', 'GKE network endpoint groups (NEGs) tutorial'."
+    },
+    {
+      "id": "q004",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "A media company is designing a real-time video transcoding pipeline processing 10,000 concurrent video uploads (avg 500MB each). They require: jobs to survive VM preemptions, horizontal scaling based on queue depth, processing within 30 minutes per video, and cost optimization. Which combination best addresses all requirements?",
+      "opts": [
+        "Cloud Pub/Sub + Cloud Run (max instances 200) with 30-minute timeout per job",
+        "Pub/Sub + GKE with Spot VMs, KEDA scaler using Pub/Sub subscription depth, and job checkpointing to Cloud Storage",
+        "Cloud Tasks + App Engine Flexible with automatic scaling",
+        "Eventarc + Cloud Run jobs with Cloud Filestore for intermediate storage"
+      ],
+      "answer": 1,
+      "explanation": "GKE Spot VMs dramatically reduce cost (60-91% discount). KEDA (Kubernetes Event-driven Autoscaling) can scale GKE node pools based on Pub/Sub queue depth. Checkpointing to Cloud Storage means Spot VM preemptions don't lose work — the job resumes from the last checkpoint. Cloud Run has a 60-minute max timeout and doesn't support resumable jobs. Cloud Tasks + App Engine Flexible lacks fine-grained spot pricing control. This combination addresses cost, resilience, and scalability.\n\n🔍 Targeted Search: 'GKE Spot VMs KEDA autoscaling Pub/Sub', 'Fault-tolerant batch processing Google Cloud best practices'."
+    },
+    {
+      "id": "q005",
+      "domain": "Designing & Planning",
+      "diff": "easy",
+      "text": "Your company wants to run a stateless web application that serves 100 req/s normally and spikes to 5,000 req/s during marketing campaigns. The team has no Kubernetes expertise and wants to avoid server management. The application has no external dependencies. Which compute option is most appropriate?",
+      "opts": [
+        "Compute Engine managed instance groups with autoscaling",
+        "Google Kubernetes Engine Autopilot",
+        "Cloud Run",
+        "App Engine Standard"
+      ],
+      "answer": 2,
+      "explanation": "Cloud Run is ideal for stateless applications with extreme scale variations — it scales from 0 to thousands of instances in seconds with no infrastructure management. App Engine Standard is also valid but Cloud Run offers more flexibility in container choice and pricing. GKE Autopilot still requires some Kubernetes knowledge. Compute Engine MIGs have slower scaling response times (minutes vs seconds).\n\n🔍 Targeted Search: 'Cloud Run vs App Engine Standard scale to zero', 'GCP Serverless compute options comparison YouTube'."
+    },
+    {
+      "id": "q006",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "An IoT platform collects telemetry from 2 million connected vehicles, generating 50,000 events/second. Data must be ingested durably, processed in real-time for alerts (< 5s latency), stored in a data warehouse for batch analytics, and retained raw for 90 days for replay. Architects should minimize total cost of ownership. Which pipeline architecture is optimal?",
+      "opts": [
+        "IoT Core → Pub/Sub → Dataflow streaming → BigQuery + Cloud Storage",
+        "Pub/Sub → Dataflow streaming pipeline (write to BigQuery via streaming inserts + Cloud Storage via windowed file writes)",
+        "Pub/Sub → Cloud Functions (per event) → Firestore (real-time) + BigQuery (batch via scheduled queries)",
+        "Kinesis Data Streams → Lambda → Redshift (not GCP but multi-cloud hybrid)"
+      ],
+      "answer": 1,
+      "explanation": "Pub/Sub provides durable ingestion at any scale. A single Dataflow streaming job can branch outputs: (1) BigQuery streaming inserts for analytics, (2) windowed Cloud Storage writes for 90-day raw retention. This is the reference architecture for real-time GCP pipelines. Cloud Functions per-event is expensive at 50k/s and adds latency. IoT Core was deprecated by Google in 2023, eliminating option A. Dataflow handles exactly-once semantics and the 5-second alert requirement via side outputs.\n\n🔍 Targeted Search: 'GCP Dataflow streaming branching outputs BigQuery Cloud Storage', 'Pub/Sub high throughput IoT ingestion architecture'."
+    },
+    {
+      "id": "q007",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "A company with 50 independent product teams on GCP needs a landing zone architecture. Requirements: each team must have billing isolation, teams cannot access each other's resources, shared services (DNS, VPN, monitoring) must be centrally managed, and security policies must be enforced organization-wide. Which structure implements these requirements with least operational overhead?",
+      "opts": [
+        "One GCP project per team with network peering to a shared VPC project",
+        "A folder-per-team with per-team projects, a Shared VPC host project in a 'shared-services' folder, and Organization Policy constraints at the org level",
+        "Multiple GCP organizations (one per team) connected through Cloud Interconnect",
+        "One large project with per-team namespaces using IAM conditions to isolate teams"
+      ],
+      "answer": 1,
+      "explanation": "Google Cloud's recommended landing zone pattern: Folders provide organizational hierarchy and policy inheritance. Each team gets their own project(s) under their folder (billing isolation via billing accounts or budgets). Shared VPC allows centralized network management. Organization Policy Service Constraints (e.g., allowed regions, requiring VPC flow logs) cascade from organization to folder to project. A single project with IAM conditions cannot provide true billing isolation. Multiple organizations multiply administrative overhead 50x.\n\n🔍 Targeted Search: 'GCP Landing Zone architecture design docs', 'Google Cloud Resource Manager folder hierarchy Shared VPC'."
+    },
+    {
+      "id": "q008",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your organization is adopting a hybrid cloud architecture. On-premises workloads need low-latency, private connectivity to GCP services in us-central1. You need 10 Gbps bandwidth, SLA-backed connectivity, and private RFC 1918 addressing (no traffic over the public internet). The budget allows for premium solutions. Which connectivity option is appropriate?",
+      "opts": [
+        "Cloud VPN with HA VPN and BGP dynamic routing",
+        "Dedicated Interconnect with 10 Gbps VLAN attachment and Cloud Router",
+        "Partner Interconnect with a certified service provider",
+        "Direct Peering with Google's edge PoPs"
+      ],
+      "answer": 1,
+      "explanation": "Dedicated Interconnect provides: dedicated physical connections (not shared), 10 Gbps per circuit, private RFC 1918 routing (traffic never traverses the internet), 99.99% SLA (with two connections in different metros), and is the only option with contractual bandwidth guarantees. Cloud VPN sends encrypted traffic over the public internet (violates 'no public internet' requirement). Partner Interconnect uses a partner's network (shared bandwidth). Direct Peering provides internet peering, not private VPC connectivity.\n\n🔍 Targeted Search: 'GCP Dedicated Interconnect vs Partner Interconnect vs Cloud VPN', 'Google Cloud Hybrid Connectivity decision tree'."
+    },
+    {
+      "id": "q009",
+      "domain": "Designing & Planning",
+      "diff": "easy",
+      "text": "A startup needs to store user-uploaded images (profile pictures, ~2MB each) and serve them globally with low latency. They expect 10 million images and 50 million reads per day. The images are immutable once uploaded. What is the most cost-effective architecture?",
+      "opts": [
+        "Store images in Cloud SQL BLOB columns and serve via App Engine",
+        "Store images in Cloud Storage Standard class, enable Cloud CDN, and serve via a load balancer with Cloud Storage bucket backend",
+        "Deploy NFS on Compute Engine and expose via an internal load balancer",
+        "Use Filestore to store images and mount to Cloud Run"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Storage is purpose-built for object storage. Standard class is cost-effective for frequently accessed data. Cloud CDN caches objects at Google's edge nodes globally, reducing latency and egress costs (CDN hits are cheaper than Cloud Storage reads). This is a classic pattern for serving static/immutable user-generated content. Cloud SQL BLOBs are expensive and don't scale for this use case. Filestore/NFS is block storage designed for application files, not web asset serving.\n\n🔍 Targeted Search: 'Cloud CDN with Cloud Storage backend Google Docs', 'Hosting static web assets on GCP architecture'."
+    },
+    {
+      "id": "q010",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "You are designing a disaster recovery strategy for a critical transaction processing system. Current state: 500GB PostgreSQL database on-premises, RTO = 4 hours, RPO = 1 hour. The company wants to migrate to GCP. Which DR strategy meets these requirements at the lowest cost?",
+      "opts": [
+        "Active-active multi-region Cloud Spanner with synchronous replication",
+        "Pilot light: AlloyDB in us-central1 with continuous WAL streaming from on-premises, with Cloud Run application pre-deployed but scaled to zero",
+        "Backup and restore: Daily Cloud Storage exports from on-premises PostgreSQL, restore to Cloud SQL during DR event",
+        "Warm standby: Cloud SQL (PostgreSQL) in us-central1 with Database Migration Service replicating from on-premises, application on GKE with min replicas=1"
+      ],
+      "answer": 3,
+      "explanation": "Warm standby matches the requirements: DMS provides continuous replication (satisfies RPO=1h), a Cloud SQL instance is kept running with a current replica (satisfies RTO=4h since promotion takes minutes, not hours), and a minimal GKE deployment (min=1) can scale up quickly. Active-active Spanner far exceeds the requirements and cost. Backup/restore typically takes hours for 500GB (RTO violation). Pilot light with WAL streaming meets requirements but CloudRun cold starts and WAL setup are more complex than DMS.\n\n🔍 Targeted Search: 'GCP Disaster Recovery planning RTO RPO patterns', 'Google Cloud Database Migration Service (DMS) continuous replication'."
+    },
+    {
+      "id": "q011",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "A retail company's data science team needs a platform to develop, train, and deploy ML models on tabular data (customer purchase history, 10TB). The team wants managed notebooks, automated feature engineering, pipeline orchestration, and model monitoring post-deployment with minimal MLOps toil. Which Vertex AI configuration should the architect recommend?",
+      "opts": [
+        "Vertex AI Workbench (managed notebooks) + Vertex AI Feature Store + Vertex AI Pipelines (Kubeflow) + Vertex AI Model Monitoring",
+        "BigQuery ML for training + Cloud Composer for orchestration + Cloud Run for serving",
+        "Dataproc + Jupyter notebooks + MLflow + Kubernetes serving",
+        "Colab Enterprise + Dataflow for feature engineering + AI Platform (legacy) for serving"
+      ],
+      "answer": 0,
+      "explanation": "This is the Vertex AI end-to-end ML platform: Workbench for managed notebook development, Feature Store for feature management and serving, Pipelines (Kubeflow-compatible) for orchestration, and Model Monitoring for drift detection. This is precisely what the v6.1 exam now tests under the new section 2.4 (Leveraging Vertex AI for end-to-end ML workflows). BigQuery ML can't handle complex custom models. AI Platform is the legacy product. Cloud Composer adds operational overhead.\n\n🔍 Targeted Search: 'Vertex AI end-to-end MLOps workflow documentation', 'Vertex AI Feature Store and Pipelines tutorial'."
+    },
+    {
+      "id": "q012",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your company is building a multi-tenant SaaS application on GCP. Each tenant's data must be cryptographically isolated. Tenant A must not be able to access Tenant B's data even if there's a misconfigured IAM policy. What data isolation approach achieves this with least operational overhead?",
+      "opts": [
+        "Separate GCP projects per tenant with tenant-specific service accounts",
+        "Customer-Managed Encryption Keys (CMEK) with per-tenant keys in Cloud KMS, combined with VPC Service Controls around the data boundary",
+        "Application-level encryption where each tenant's data is encrypted with a unique key derived from their tenant ID",
+        "Separate Cloud SQL instances per tenant encrypted with CSEK (Customer-Supplied Encryption Keys)"
+      ],
+      "answer": 1,
+      "explanation": "CMEK with per-tenant keys in Cloud KMS provides cryptographic isolation: even if IAM is misconfigured and Tenant B reads Tenant A's Cloud Storage objects, the data is unreadable without Tenant A's KMS key. VPC Service Controls add a defense-in-depth perimeter. Separate projects per tenant work but multiply operational overhead (billing, IAM, monitoring) at scale. CSEK requires managing raw keys externally. Application-level encryption is viable but the key derivation approach doesn't provide cryptographic isolation at the infrastructure level.\n\n🔍 Targeted Search: 'GCP multi-tenant data isolation architecture', 'Cloud KMS CMEK vs CSEK differences'."
+    },
+    {
+      "id": "q013",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "Your team manages 15 GKE clusters across 3 environments (dev, staging, prod) using Terraform. You need to enforce that all GKE clusters use the same approved node image versions, have Binary Authorization enabled, and Workload Identity configured. Changes to these settings must go through code review. What is the best practice implementation?",
+      "opts": [
+        "Use gcloud commands in CI/CD pipeline scripts to configure each cluster after creation",
+        "Create a Terraform module for GKE clusters that encodes these requirements as defaults, use module in all cluster configurations, enforce via Sentinel policies in Terraform Cloud",
+        "Use GKE Config Connector with custom resource definitions to manage cluster settings",
+        "Manually configure each cluster and use Config Management to detect drift"
+      ],
+      "answer": 1,
+      "explanation": "A reusable Terraform module encapsulates the approved configuration, ensuring all 15 clusters are created consistently. Terraform Sentinel (or Open Policy Agent for Terraform) enforces policies at plan time — rejecting configurations that violate standards before apply. This enables GitOps review workflows. Config Connector is Kubernetes-native but adds cluster management overhead. Manual configuration is error-prone and doesn't scale. This approach aligns with the v6.1 requirement that Terraform/IaC is now explicit exam knowledge.\n\n🔍 Targeted Search: 'Terraform modules for GKE best practices', 'Enforcing policy as code with Sentinel GCP'."
+    },
+    {
+      "id": "q014",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "text": "A company is deploying a multi-tier application on GKE. The frontend (public), API layer (internal), and database (private) must be in separate subnets. The API layer should only accept traffic from the frontend. The database should only accept traffic from the API layer. No traffic should bypass these controls even within the cluster. Which Kubernetes and GCP networking combination enforces this?",
+      "opts": [
+        "Use Kubernetes NetworkPolicies with pod selectors to restrict cross-tier traffic, deploy tiers in separate namespaces, use GKE Dataplane V2 (eBPF) for enforcement",
+        "Create separate VPCs for each tier and use VPC peering with firewall rules",
+        "Use Cloud Armor security policies attached to GKE internal load balancers",
+        "Configure GKE nodes in separate node pools with different service accounts and GCP firewall rules"
+      ],
+      "answer": 0,
+      "explanation": "Kubernetes NetworkPolicies with GKE Dataplane V2 (based on Cilium/eBPF) enforce policies at the kernel level inside the cluster. Pod selectors enforce microsegmentation: frontend pods can reach API pods (allowed label), API pods can reach DB pods, no other combinations allowed. Separate namespaces provide additional logical isolation. GCP firewall rules control node-to-node traffic but don't enforce pod-level policies within a node. VPC peering with separate VPCs is over-engineered for intra-cluster traffic and creates routing complexity.\n\n🔍 Targeted Search: 'GKE Dataplane V2 eBPF Network Policies', 'Kubernetes NetworkPolicy microsegmentation examples'."
+    },
+    {
+      "id": "q015",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "Your Terraform code provisions a Cloud SQL instance. After applying, a developer accidentally deleted the instance manually via the Console. When you run 'terraform apply' again, what happens?",
+      "opts": [
+        "Terraform detects no changes because the state file still shows the resource as created",
+        "Terraform plan shows the resource must be re-created, and apply will provision a new Cloud SQL instance",
+        "Terraform throws an error because the state is corrupted",
+        "The resource is automatically restored from Terraform state"
+      ],
+      "answer": 1,
+      "explanation": "Terraform compares desired state (config) with actual infrastructure state. When the instance is manually deleted, 'terraform refresh' (implicit in plan) detects the real state: the instance is gone. 'terraform plan' shows it must be created (+). 'terraform apply' provisions a new instance. The state file is NOT the source of truth for actual infra — it tracks the last known state. This is why IaC drift detection matters. The Terraform state file is updated on each apply to reflect reality.\n\n🔍 Targeted Search: 'Terraform state vs actual infrastructure drift detection', 'Terraform refresh behavior documentation'."
+    },
+    {
+      "id": "q016",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "You are setting up a GKE cluster that needs to access BigQuery, Cloud Storage, and Pub/Sub from application pods. The security team requires that no service account keys (JSON files) are stored in the cluster. Which approach satisfies this requirement?",
+      "opts": [
+        "Mount a Kubernetes Secret containing the service account JSON key into each pod",
+        "Configure Workload Identity to map Kubernetes Service Accounts (KSA) to Google Service Accounts (GSA) and grant the GSA the required IAM roles",
+        "Set the GKE node pool service account to have access to BigQuery, Cloud Storage, and Pub/Sub",
+        "Use gcloud auth activate-service-account in an init container to authenticate before the main container starts"
+      ],
+      "answer": 1,
+      "explanation": "Workload Identity is the recommended way for GKE workloads to authenticate to Google Cloud APIs. It creates a mapping between KSA and GSA — pods assume the GSA identity without any key files. The metadata server issues short-lived tokens automatically. Option C (node-level SA) violates least privilege — all pods on the node share the same credentials. Options A and D require managing key files, which violates the requirement. Workload Identity is explicitly tested in the v6.1 exam.\n\n🔍 Targeted Search: 'GKE Workload Identity setup guide', 'Kubernetes Service Account to Google Service Account mapping'."
+    },
+    {
+      "id": "q017",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "text": "You have a Terraform configuration that manages infrastructure across 5 GCP projects. A new engineer accidentally ran 'terraform destroy' and destroyed all resources in the production project. How should you prevent this from happening in the future?",
+      "opts": [
+        "Add lifecycle { prevent_destroy = true } to all critical resources",
+        "Enable Terraform Cloud workspace variable to set TF_ENV=production and add manual approval gates",
+        "Store Terraform state in a GCS bucket with versioning and object lock, use separate workspaces per project, and require MFA + Sentinel policy approval for destroy operations in production",
+        "Encrypt the Terraform state file with a KMS key that only senior engineers can access"
+      ],
+      "answer": 2,
+      "explanation": "Multi-layered defense: (1) Separate workspaces prevent accidental cross-project operations, (2) GCS versioning allows state recovery, (3) object lock prevents state deletion, (4) MFA + approval gates add human verification for destructive operations. Sentinel policies can reject plans that destroy critical resources. While lifecycle prevent_destroy helps, a determined user can remove that block first. Separating state per project is the foundational control. This is an operational excellence pattern from the WAF framework (now required in v6.1).\n\n🔍 Targeted Search: 'Terraform state management best practices GCP', 'Cloud Storage Object Lock for Terraform state'."
+    },
+    {
+      "id": "q018",
+      "domain": "Managing & Provisioning",
+      "diff": "easy",
+      "text": "You need to deploy a containerized application that will run as a one-time batch job — processing 1 million records from BigQuery and writing results to Cloud Storage. The job takes approximately 45 minutes. You want the simplest solution with minimal infrastructure management and pay only for execution time. Which compute option is most appropriate?",
+      "opts": [
+        "Cloud Run Jobs",
+        "GKE CronJob",
+        "Compute Engine VM with startup script",
+        "Cloud Functions (2nd gen) with 60-minute timeout"
+      ],
+      "answer": 0,
+      "explanation": "Cloud Run Jobs are designed exactly for this use case: containerized batch processing, pay-per-use (CPU+memory during execution), no idle costs, up to 24-hour timeout, no cluster management required. Cloud Functions 2nd gen has a maximum 60-minute timeout (insufficient for 45 min with any overhead, and risky). GKE requires managing a cluster. Compute Engine requires VM lifecycle management (start/stop). Cloud Run Jobs (GA in 2023) is the simplest managed option for batch workloads.\n\n🔍 Targeted Search: 'Cloud Run Jobs vs Cloud Functions comparison', 'GCP serverless batch processing architectures'."
+    },
+    {
+      "id": "q019",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "A healthcare company stores PHI (Protected Health Information) in BigQuery. The following requirements exist: (1) PHI fields must be automatically detected and masked for data analysts, (2) security engineers need unmasked access for incident investigation, (3) all access to PHI must be audited, (4) the solution must scale to petabytes. Which combination achieves all four requirements?",
+      "opts": [
+        "BigQuery column-level security with policy tags + Cloud DLP inspection + BigQuery data masking policies + Cloud Audit Logs",
+        "Encrypt PHI columns with AEAD encryption functions in BigQuery SQL with per-user key management",
+        "BigQuery row-level security with a separate analytical view that replaces PHI with NULL values",
+        "Cloud SQL with application-level field encryption and a proxy service for access control"
+      ],
+      "answer": 0,
+      "explanation": "BigQuery's built-in security stack for PHI: (1) Cloud DLP auto-discovers PHI fields, (2) Policy Tags classify columns, (3) Data Masking policies mask/tokenize PHI for analysts while security engineers with 'Fine-Grained Reader' role see unmasked data, (4) Cloud Audit Log records all data access. This is a reference architecture for HIPAA-compliant BigQuery. AEAD encryption is powerful but requires key management per user. Row-level security + NULL views don't scale to petabyte analytics. Cloud SQL doesn't scale to petabytes.\n\n🔍 Targeted Search: 'BigQuery column-level security data masking policies', 'Cloud DLP inspection BigQuery PHI HIPAA'."
+    },
+    {
+      "id": "q020",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "Your company's GCP environment consists of 100+ projects. The security team wants to ensure that service accounts are not able to exfiltrate data from BigQuery to public Cloud Storage buckets in any project. They also want to prevent API calls to GCP from outside the corporate network. Which GCP control enforces these constraints?",
+      "opts": [
+        "IAM deny policies at the organization level blocking bigquery.tables.export permission",
+        "VPC Service Controls perimeter around all BigQuery and Cloud Storage resources, with an access policy requiring corporate IP ranges",
+        "Cloud Armor rules attached to each BigQuery and Cloud Storage resource",
+        "Organization Policy constraint: constraints/storage.publicAccessPrevention combined with constraints/bigquery.disableExportToExternalStorage"
+      ],
+      "answer": 1,
+      "explanation": "VPC Service Controls create a security perimeter that: (1) prevents data exfiltration from BigQuery to Cloud Storage outside the perimeter (even if IAM allows it), (2) can restrict access to the perimeter based on access levels including IP ranges (corporate network requirement). It's the strongest defense against insider threats and credential compromise. IAM Deny policies control permissions but not network egress. Organization Policies are blunt instruments. VPC-SC is specifically designed for data exfiltration prevention.\n\n🔍 Targeted Search: 'GCP VPC Service Controls data exfiltration prevention', 'VPC Service Controls access levels IP restriction'."
+    },
+    {
+      "id": "q021",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "A company is deploying a generative AI application using Vertex AI Gemini API. The application allows users to input prompts that are sent to the Gemini model. The security team is concerned about: prompt injection attacks, generation of harmful content, and PII leakage in model responses. Which combination of GCP controls addresses all three concerns?",
+      "opts": [
+        "Apply Cloud Armor to the API endpoint and use Cloud DLP to scan model responses",
+        "Configure Model Armor on the Vertex AI endpoint to filter input prompts and output responses, use Sensitive Data Protection (Cloud DLP) on response text before returning to users, and enable Vertex AI safety filters",
+        "Use IAP (Identity-Aware Proxy) to authenticate all requests and restrict to verified corporate users only",
+        "Apply rate limiting via Cloud Endpoints and log all prompts/responses to Cloud Logging for manual review"
+      ],
+      "answer": 1,
+      "explanation": "This directly tests the new v6.1 'Securing AI' topic: Model Armor is Google Cloud's purpose-built protection for gen AI endpoints — it detects and blocks prompt injection, jailbreak attempts, and malicious inputs at the API level. Vertex AI safety filters block harmful content generation. Sensitive Data Protection (Cloud DLP) can detect PII in model outputs before they reach users. Cloud Armor protects network perimeter but doesn't understand prompt injection. IAP controls authentication but not AI-specific threats. This combination addresses all three attack vectors.\n\n🔍 Targeted Search: 'Google Cloud Model Armor prompt injection', 'Vertex AI safety filters securing generative AI'."
+    },
+    {
+      "id": "q022",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "Your organization uses a service mesh (Cloud Service Mesh / Anthos Service Mesh) on GKE. You need to ensure all inter-service communication is mutually authenticated and encrypted, even if a pod's network traffic is intercepted. Which control achieves this with least code changes?",
+      "opts": [
+        "Deploy application-level TLS in each service with hardcoded certificates",
+        "Enable mTLS in STRICT mode in the Cloud Service Mesh AuthorizationPolicy, letting the Envoy sidecar handle certificate management via SPIFFE/X.509 certificates",
+        "Configure Kubernetes NetworkPolicies to only allow pod-to-pod communication on port 443",
+        "Encrypt the GKE node-to-node traffic at the VPC level using VPN tunnels between nodes"
+      ],
+      "answer": 1,
+      "explanation": "ASM/CSM in STRICT mTLS mode means the Envoy sidecar proxy automatically handles certificate generation (SPIFFE), rotation, and mutual authentication for every service-to-service call — zero application code changes required. This is transparent to the application and provides in-transit encryption that satisfies compliance requirements. Kubernetes NetworkPolicies control connectivity but don't provide encryption. Application-level TLS requires code changes. VPN between nodes is impractical and not granular enough for service-level authentication.\n\n🔍 Targeted Search: 'Anthos Service Mesh STRICT mTLS configuration', 'Envoy sidecar proxy SPIFFE authentication GKE'."
+    },
+    {
+      "id": "q023",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "A company is concerned about supply chain security for their containerized applications deployed on GKE. They want to ensure only container images that have passed vulnerability scanning and been signed by the build system can be deployed to production. Which GCP service enforces this?",
+      "opts": [
+        "Cloud Armor attached to the GKE cluster ingress",
+        "Binary Authorization with an attestation-based policy requiring signed images from Artifact Registry + Vulnerability Scanning attestation",
+        "Configure GKE admission webhooks to check image tags from an approved registry",
+        "Cloud Security Command Center Findings blocking non-compliant deployments"
+      ],
+      "answer": 1,
+      "explanation": "Binary Authorization is GKE's admission control for container supply chain security. A policy requires attestations (cryptographic signatures) before images can be deployed. The workflow: Cloud Build scans the image in Artifact Registry (using Artifact Analysis/Container Scanning), creates an attestation if it passes, Binary Authorization's admission webhook verifies the attestation at deploy time. This is end-to-end supply chain security. This is part of the v6.1 security updates covering software supply chain security.\n\n🔍 Targeted Search: 'GCP Binary Authorization attestation guide', 'Software supply chain security SLSA on Google Cloud'."
+    },
+    {
+      "id": "q024",
+      "domain": "Security & Compliance",
+      "diff": "easy",
+      "text": "Your team needs to grant a third-party vendor temporary access to a Cloud Storage bucket to upload files for a 48-hour period. The vendor does not have a Google account. You don't want to create a service account key for them. What is the most secure approach?",
+      "opts": [
+        "Create a service account, download a JSON key, share it with the vendor, delete after 48 hours",
+        "Generate a Signed URL with a 48-hour expiration using a service account's private key",
+        "Create a temporary Google account for the vendor and add them to a group with bucket access",
+        "Use Workload Identity Federation to grant the vendor's AWS IAM role temporary access to the bucket"
+      ],
+      "answer": 1,
+      "explanation": "Signed URLs are time-limited URLs that grant temporary access to a specific Cloud Storage object/bucket operation without requiring Google accounts or credentials. The URL can only be used for the specified HTTP method (PUT/GET) and expires after 48 hours. Service account keys are long-lived credentials that are risky to share externally. Creating Google accounts adds administrative overhead. Workload Identity Federation is for machine-to-machine auth, not human vendor access. Signed URLs are the canonical solution for this scenario.\n\n🔍 Targeted Search: 'Cloud Storage Signed URLs generation', 'GCP granting temporary access to Cloud Storage'."
+    },
+    {
+      "id": "q025",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "Your company must comply with GDPR. Users in the EU have the 'right to erasure' — their PII must be deletable on request. Data is stored in BigQuery (analytics, 10TB), Cloud Storage (raw files, 100TB), and Firestore (application data). Deletion must be verifiable and complete within 30 days. What is the recommended architecture?",
+      "opts": [
+        "Keep a mapping table of user_id to storage locations, run deletion scripts across all three systems on request, enable audit logs to verify",
+        "Pseudonymize PII using Cloud KMS wrapping keys per user — to 'erase' a user, delete their KMS key, rendering all their data cryptographically unreadable in BigQuery, Cloud Storage, and Firestore",
+        "Delete rows from Firestore, use BigQuery DELETE DML statements, and overwrite Cloud Storage objects with blank files",
+        "Re-process all BigQuery tables to remove PII using a Dataflow pipeline on each deletion request"
+      ],
+      "answer": 1,
+      "explanation": "Crypto-shredding is the scalable GDPR erasure pattern: (1) Pseudonymize all PII during ingestion using envelope encryption with a per-user Cloud KMS key, (2) To erase, delete the user's KMS key — all encrypted data becomes permanently unreadable (cryptographic erasure), (3) This works across BigQuery, Cloud Storage, and Firestore without modifying data, (4) KMS key deletion is auditable. This is the only approach that scales to 100TB without reprocessing. Deletion scripts across distributed systems risk missing data and are hard to verify.\n\n🔍 Targeted Search: 'GCP Crypto-shredding pattern GDPR', 'Cloud KMS envelope encryption for data erasure'."
+    },
+    {
+      "id": "q026",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "An organization wants to implement a zero-trust security model for employees accessing internal GCP applications. Employees use corporate laptops (managed by Endpoint Verification) and may work from home or office. Access decisions should be based on user identity AND device compliance AND network context. Which GCP solution implements this?",
+      "opts": [
+        "Cloud VPN for all remote access plus IAM conditions based on IP range",
+        "Identity-Aware Proxy (IAP) with BeyondCorp Enterprise access levels, combining Endpoint Verification device attributes with user identity and network context in IAM conditions",
+        "Configure MFA on the corporate Google Workspace account and allow all authenticated users",
+        "Cloud Armor geo-restriction rules limiting access to the corporate IP range"
+      ],
+      "answer": 1,
+      "explanation": "BeyondCorp Enterprise / IAP is Google's zero-trust implementation: (1) IAP enforces application-level authentication (not network-level), (2) Endpoint Verification collects device compliance data, (3) Access Levels combine user identity (Google/OIDC), device attributes (OS version, encryption status), and network context, (4) IAM Conditions evaluate these at request time. This provides context-aware access without VPN. Cloud VPN is perimeter-based (not zero-trust). Cloud Armor is a WAF, not an identity-aware proxy.\n\n🔍 Targeted Search: 'BeyondCorp Enterprise Identity-Aware Proxy (IAP)', 'GCP Zero Trust architecture implementation'."
+    },
+    {
+      "id": "q027",
+      "domain": "Analyzing & Optimizing",
+      "diff": "medium",
+      "text": "Your BigQuery data warehouse costs are unexpectedly high. Analysis shows that analysts are frequently running queries that scan entire 10TB tables to retrieve 5 rows. The data has a 'timestamp' column used in almost all queries' WHERE clauses. What is the most impactful cost-reduction technique?",
+      "opts": [
+        "Enable BigQuery BI Engine for all analyst workspaces to cache frequent queries",
+        "Partition the table by the timestamp column using DAY or MONTH partitioning, require queries to include partition filter via the require_partition_filter table option",
+        "Create materialized views for the top 10 most frequent queries",
+        "Move the table to BigQuery Omni in a different region to reduce storage costs"
+      ],
+      "answer": 1,
+      "explanation": "Table partitioning by timestamp dramatically reduces scan costs — a query for today's data scans only that partition (maybe 10GB) instead of 10TB, reducing cost by 1000x. Enabling require_partition_filter forces analysts to always include a partition predicate, preventing accidental full-table scans. This is the highest-impact optimization. BI Engine caches results but doesn't reduce scan costs for new queries. Materialized views only help if the top 10 queries are representative of all costly queries. Region has no impact on query costs.\n\n🔍 Targeted Search: 'BigQuery table partitioning require_partition_filter', 'BigQuery cost optimization techniques YouTube'."
+    },
+    {
+      "id": "q028",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A company has a microservices application on GKE where P99 latency for the checkout service has degraded from 120ms to 800ms after a recent deployment. Cloud Trace shows the slowdown occurs in calls from checkout to inventory-service. The checkout-service team claims no code changes were made, but the inventory-service team deployed a new version. How should you diagnose the root cause using GCP observability tools?",
+      "opts": [
+        "Roll back the inventory-service deployment and if latency improves, the issue is confirmed",
+        "Use Cloud Profiler to capture CPU profiles of the inventory-service, cross-reference with Cloud Trace spans to identify the slow method, then check Cloud Logging for error patterns correlated with high-latency requests",
+        "Increase the inventory-service's resource requests/limits and redeploy",
+        "Add application logging in the inventory-service's hot path and review next week's data"
+      ],
+      "answer": 1,
+      "explanation": "This is a systematic observability approach: (1) Cloud Trace identifies the slow span (checkout→inventory), confirming location, (2) Cloud Profiler captures real-time CPU/memory profiles without code changes — flame graphs pinpoint the slow method, (3) Correlate timestamps: if slow trace spans correlate with specific log error patterns, this reveals the root cause. Cloud Profiler is explicitly tested in v6.1. Rolling back is a remediation, not diagnosis. Increasing resources may mask the symptom without fixing the root cause.\n\n🔍 Targeted Search: 'Google Cloud Profiler vs Cloud Trace debugging', 'GCP Observability stack troubleshooting microservices latency'."
+    },
+    {
+      "id": "q029",
+      "domain": "Analyzing & Optimizing",
+      "diff": "medium",
+      "text": "Your Cloud Run services costs have increased 400% in one month. Cloud Monitoring shows CPU utilization is 5% average. Most requests complete in 2ms but instances stay alive for 10 minutes after the last request. What is the most likely cause and fix?",
+      "opts": [
+        "The service has too many concurrent requests; reduce max-concurrency setting",
+        "Cloud Run's minimum instances is set too high; set it to 0 for non-critical services",
+        "The CPU is being throttled to background levels; enable always-on CPU allocation",
+        "The service is set with a long idle instance timeout; reduce the minimum-instances and ensure max-instance-idle-timeout matches workload patterns"
+      ],
+      "answer": 3,
+      "explanation": "Cloud Run bills for CPU+memory while instances are active. If instances stay alive 10 minutes after their last request, idle costs accumulate. The fix: set min-instances=0 (if cold start latency is acceptable) or a low number, and configure max-instance-request-timeout appropriately. CPU throttling (option C) would increase costs but CPU is only 5%. Low max-concurrency would cause more instances for the same traffic, increasing cost. The idle timeout pattern matches the described behavior — instances not shutting down promptly.\n\n🔍 Targeted Search: 'Cloud Run billing idle instances min-instances', 'Optimizing Cloud Run costs architecture guide'."
+    },
+    {
+      "id": "q030",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A company's on-premises data center needs to migrate 500TB of cold historical data to GCP within 2 weeks. The internet link is 100 Mbps. Transferring over the internet would take approximately 463 days. What is the recommended migration path?",
+      "opts": [
+        "Increase internet bandwidth to 1 Gbps and use gsutil parallel transfer",
+        "Use Transfer Appliance to ship data physically to Google, then ingest into Cloud Storage",
+        "Set up Cloud VPN and use Storage Transfer Service for the migration",
+        "Use BigQuery Data Transfer Service to migrate data in parallel chunks"
+      ],
+      "answer": 1,
+      "explanation": "Transfer Appliance is Google's physical data transfer service: high-capacity hardware (up to 1 PB) is shipped to the customer, data is loaded on-premises (400TB/day transfer speed), appliance is shipped back to Google, and data is loaded into Cloud Storage. For 500TB over a 100Mbps link: physical transfer is the only option to meet a 2-week deadline. Storage Transfer Service works over the network — same bandwidth bottleneck. BigQuery DTS is for structured data sources. gsutil over 100Mbps = 463 days regardless of parallelism.\n\n🔍 Targeted Search: 'Google Cloud Transfer Appliance offline data migration', 'GCP large scale data transfer decision tree'."
+    },
+    {
+      "id": "q031",
+      "domain": "Analyzing & Optimizing",
+      "diff": "medium",
+      "text": "Your company runs 200 Compute Engine VMs for development workloads that are only used Monday-Friday 8am-6pm. The VMs must be available within 5 minutes when developers need them. How can you reduce costs without impacting developer experience?",
+      "opts": [
+        "Convert all VMs to Preemptible and use a startup script to reconfigure after preemption",
+        "Use Committed Use Discounts (1-year) for all 200 VMs",
+        "Schedule VMs to start at 7:45am and stop at 6:15pm on weekdays using Cloud Scheduler + Cloud Functions triggering Instance Group operations",
+        "Resize all VMs to smaller machine types based on CPU utilization data from Cloud Monitoring"
+      ],
+      "answer": 2,
+      "explanation": "VMs running 10 hours/day × 5 days/week = 50 hours vs 168 hours/week = 70% cost reduction. Cloud Scheduler can trigger Pub/Sub messages, Cloud Functions respond by calling the Compute Engine API to start/stop instances on schedule. The 15-minute buffer satisfies the 5-minute availability requirement. Preemptible VMs can be terminated at any time (violates availability requirement). CUDs lock you into full-time billing for workloads that only run 30% of the time — worse economics. Rightsizing is complementary but achieves smaller savings.\n\n🔍 Targeted Search: 'Scheduling Compute Engine VMs Cloud Scheduler Cloud Functions', 'GCP cost optimization shutting down idle environments'."
+    },
+    {
+      "id": "q032",
+      "domain": "Analyzing & Optimizing",
+      "diff": "easy",
+      "text": "You want to detect anomalies in GCP resource costs — specifically, identify when a service's cost suddenly spikes 3x above its normal baseline. Which tool provides automated anomaly detection for this?",
+      "opts": [
+        "Manually review the Billing Reports dashboard weekly",
+        "Set up Cloud Billing budget alerts with a fixed monthly threshold",
+        "Enable Cloud Billing anomaly detection which uses ML to establish baselines and alert on unusual spending patterns",
+        "Create a Cloud Monitoring alerting policy based on billing metrics"
+      ],
+      "answer": 2,
+      "explanation": "Cloud Billing's built-in anomaly detection (available in Cloud Console Billing > Reports) uses ML to establish usage baselines per service/project and automatically alerts when spending deviates anomalously — no manual threshold configuration required. Fixed budget thresholds miss proportional spikes (a 3x spike may still be under the absolute threshold early in the month). Cloud Monitoring billing metrics exist but require manual baseline configuration. Anomaly detection is the exam's expected answer for automated cost spike detection.\n\n🔍 Targeted Search: 'Google Cloud Billing anomaly detection ML', 'Automated cost control alerts GCP billing'."
+    },
+    {
+      "id": "q033",
+      "domain": "Managing Implementation",
+      "diff": "medium",
+      "text": "Your team is migrating an on-premises Java application to Cloud Run. The application connects to a Cloud SQL (PostgreSQL) instance. In testing, you observe that under load, Cloud Run scales to 100 instances but Cloud SQL hits the max_connections limit (500). How do you resolve this without increasing Cloud SQL compute?",
+      "opts": [
+        "Enable Cloud SQL High Availability to double connection capacity",
+        "Deploy Cloud SQL Proxy as a sidecar in each Cloud Run container",
+        "Use PgBouncer or Cloud SQL Proxy with connection pooling, deployed as a separate service; applications connect to the pooler, not Cloud SQL directly",
+        "Increase Cloud SQL instance to db-custom-32-131072 which supports more connections"
+      ],
+      "answer": 2,
+      "explanation": "Cloud Run scales horizontally — 100 instances × (e.g.) 10 connections each = 1,000 connections, exceeding Cloud SQL's limit. PgBouncer (or Cloud SQL Auth Proxy with connection pooling) multiplexes many application connections into fewer backend connections to Cloud SQL. Deployed as a separate service, all Cloud Run instances connect to the pooler which maintains a small pool to Cloud SQL. Cloud SQL HA adds failover, not connection capacity. Cloud SQL Proxy as a sidecar doesn't pool — each instance still holds direct connections. Scaling up Cloud SQL is expensive.\n\n🔍 Targeted Search: 'Cloud Run Cloud SQL connection pooling PgBouncer', 'Managing database connections in serverless GCP'."
+    },
+    {
+      "id": "q034",
+      "domain": "Managing Implementation",
+      "diff": "medium",
+      "text": "A company's APIs are consumed by external partners, internal teams, and mobile apps. They need: rate limiting per consumer, API key management, request/response transformation, developer portal, and usage analytics. The APIs run on Cloud Run. Which Google Cloud service provides all of these capabilities?",
+      "opts": [
+        "Cloud Endpoints with an Nginx proxy on Compute Engine",
+        "Apigee X (or hybrid) fronting the Cloud Run backend services",
+        "Cloud Armor with Web Application Firewall rules",
+        "Traffic Director with gRPC health checks"
+      ],
+      "answer": 1,
+      "explanation": "Apigee is Google Cloud's full-lifecycle API management platform providing: developer portal, API key/OAuth management, rate limiting and quota enforcement per app/developer, request/response mediation, analytics dashboards, and API versioning. It fronts any backend (Cloud Run, GKE, Compute Engine). Cloud Endpoints provides some features (auth, monitoring) but lacks developer portal, transformation, and full quota management. Cloud Armor is a WAF/DDoS tool. Traffic Director is for internal service mesh.\n\n🔍 Targeted Search: 'Apigee X API Management Google Cloud', 'Cloud Endpoints vs Apigee feature comparison'."
+    },
+    {
+      "id": "q035",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "text": "Your organization is performing a large-scale migration using the WAVE methodology. You need to migrate 1,000 VMs from VMware to GCP. The migration must have zero data loss, minimal downtime (< 2 hours per VM), and preserve VM configurations. The team wants automated discovery of VM dependencies. Which tool and pattern should you use?",
+      "opts": [
+        "Use Google Cloud Migration Center to assess and discover VMs, then migrate using Migrate to Virtual Machines (formerly Velostrata) with continuous replication",
+        "Manually take VMware snapshots, upload to Cloud Storage, and import as Compute Engine images",
+        "Use Transfer Appliance to copy all VM disk images and import via gcloud compute images import",
+        "Deploy a parallel environment on GCP and use DNS cutover to redirect traffic"
+      ],
+      "answer": 0,
+      "explanation": "Migration Center performs automated discovery and dependency mapping of VMware workloads. Migrate to Virtual Machines (M2VM) provides: continuous background replication (streaming disk changes to GCP), so VMs remain running until cutover; then the final cutover takes < 2 hours (just replaying recent delta changes). This is the purpose-built GCP migration toolchain for VMware. Manual snapshots require VM downtime for the full copy. Transfer Appliance is for bulk data, not live VM migration. DNS cutover requires running parallel environments.\n\n🔍 Targeted Search: 'GCP Migrate to Virtual Machines (M2VM) VMware', 'Google Cloud Migration Center discovery assessment'."
+    },
+    {
+      "id": "q036",
+      "domain": "Managing Implementation",
+      "diff": "medium",
+      "text": "You are designing a CI/CD pipeline for a Kubernetes application. The pipeline must: build container images, run security scanning, deploy to staging for integration tests, and deploy to production only if all tests pass and a human approves. Which GCP-native pipeline implements this with SLSA Level 3 supply chain security?",
+      "opts": [
+        "Cloud Build with separate triggers per environment, Binary Authorization required-attestation policy for production, and Cloud Deploy with approval gate before production target",
+        "Jenkins deployed on GKE with manual approval webhooks",
+        "GitHub Actions with gcloud deploy commands and a JIRA approval ticket",
+        "Cloud Run Jobs running custom deployment scripts with Cloud KMS signing"
+      ],
+      "answer": 0,
+      "explanation": "GCP-native CI/CD: Cloud Build builds the image and runs Cloud Build Security Insights (vulnerability scan) creating attestations. Cloud Deploy manages deployment pipeline (staging → production) with approval gates. Binary Authorization's policy requires the security attestation for production deployment. This achieves SLSA Level 3: hermetic builds in Cloud Build, signed artifacts, provenance metadata. Cloud Deploy's audit trail provides supply chain visibility. This directly tests the v6.1 requirement for software supply chain security awareness.\n\n🔍 Targeted Search: 'Google Cloud Deploy delivery pipelines approval gates', 'SLSA Level 3 Cloud Build Binary Authorization'."
+    },
+    {
+      "id": "q037",
+      "domain": "Reliability & WAF",
+      "diff": "medium",
+      "text": "Your SRE team has defined an SLO: 99.9% of HTTP requests must complete in under 200ms over a 30-day rolling window. Today, the error budget is 40% consumed with 20 days remaining. The team wants to automatically reduce the deployment velocity when the error budget drops below 50%. How do you implement this?",
+      "opts": [
+        "Set a Cloud Monitoring alert when error budget < 50% and manually pause the deployment pipeline",
+        "Configure an SLO in Cloud Monitoring, create an alert policy on the error_budget_burn_rate metric, and use the alert to trigger a Cloud Pub/Sub message that pauses Cloud Deploy releases via an automation",
+        "Reduce deployment frequency manually at the beginning of each month",
+        "Set the Cloud Run min-instances to 0 when error budget is low to reduce traffic"
+      ],
+      "answer": 1,
+      "explanation": "SRE error budget automation: (1) Cloud Monitoring natively supports SLO definition and computes error_budget_burn_rate, (2) Alert policies trigger on burn rate thresholds (fast burn = immediate alert, slow burn = warning), (3) Pub/Sub notification → Cloud Functions/Workflows → Cloud Deploy API to pause releases. This is the canonical GCP SRE implementation. The v6.1 exam now explicitly covers WAF operational excellence principles, including SLO-driven deployment policies. Manual pausing doesn't provide automated velocity control.\n\n🔍 Targeted Search: 'GCP SRE Error Budget Burn Rate alerts', 'Automating deployments based on SLOs Cloud Monitoring'."
+    },
+    {
+      "id": "q038",
+      "domain": "Reliability & WAF",
+      "diff": "hard",
+      "text": "A financial application requires 99.99% availability (52 minutes downtime/year). It consists of: a stateful trading engine (GKE), a real-time market data feed (Pub/Sub), and a transactional database (Cloud Spanner). A complete regional outage is your biggest risk. Which architecture achieves 99.99% with the lowest additional cost?",
+      "opts": [
+        "Run all components in a single region with zone-level redundancy (3 zones)",
+        "Deploy GKE cluster across two regions with active-active topology, use Spanner multi-region (nam-eur-asia1), and configure Pub/Sub as a global service by default, fronted by global load balancer",
+        "Deploy in primary region + cold standby in secondary region with RPO=1hr",
+        "Use a single region with Cloud Spanner (which has 99.999% SLA) and accept the risk for GKE"
+      ],
+      "answer": 1,
+      "explanation": "For 99.99% across a regional failure: (1) Pub/Sub is inherently global (multi-region by default) ✓, (2) Spanner multi-region provides 99.999% SLA with synchronous replication ✓, (3) GKE in two regions with global LB provides regional failover ✓. Single-region with 3 zones achieves ~99.99% for zone failures but fails for a full regional outage. Cold standby has RPO=1hr (financial data unacceptable) and RTO may exceed the 52-minute annual budget. This question tests multi-regional design, a core PCA competency.\n\n🔍 Targeted Search: 'GCP multi-region active-active architectures', 'Designing for 99.99% availability Google Cloud'."
+    },
+    {
+      "id": "q039",
+      "domain": "Reliability & WAF",
+      "diff": "medium",
+      "text": "Your team is on call for a production GKE application. At 3am, you receive an alert: all pods in the 'payments' namespace are CrashLoopBackOff. You need to diagnose the issue quickly. What is the FIRST action to take?",
+      "opts": [
+        "Immediately roll back the last deployment",
+        "Scale the deployment to 0 and back to the original replica count",
+        "Run 'kubectl logs <pod-name> --previous' and 'kubectl describe pod <pod-name>' to examine crash logs and events",
+        "Create a new GKE cluster and redeploy the application"
+      ],
+      "answer": 2,
+      "explanation": "Diagnose before acting: 'kubectl logs --previous' shows the logs from the crashed container (since the current container is crashing, --previous accesses the last container's logs). 'kubectl describe pod' shows events including OOMKilled (memory), image pull errors, liveness probe failures, or config mount failures. This takes 30 seconds and immediately identifies the cause. Rolling back without diagnosis may not fix the issue if the problem is external (bad ConfigMap, dependency failure, secret rotation). This is standard SRE incident response.\n\n🔍 Targeted Search: 'Kubernetes CrashLoopBackOff debugging kubectl logs --previous', 'SRE incident response playbooks GKE'."
+    },
+    {
+      "id": "q040",
+      "domain": "Reliability & WAF",
+      "diff": "medium",
+      "text": "According to the Google Cloud Well-Architected Framework's cost optimization pillar, which statement best describes the recommended approach to resource sizing for production GKE workloads?",
+      "opts": [
+        "Always provision 3x headroom to avoid any risk of resource exhaustion",
+        "Use Vertical Pod Autoscaler (VPA) in recommendation mode for 2 weeks to gather right-sizing recommendations, then apply the p95 requests/limits and use Horizontal Pod Autoscaler for scaling",
+        "Set resource requests and limits to the same value for all containers to ensure QoS class Guaranteed",
+        "Leave resource requests/limits unset to allow Kubernetes to schedule pods without restriction"
+      ],
+      "answer": 1,
+      "explanation": "WAF cost optimization for Kubernetes: VPA in recommendation mode observes actual resource usage and provides data-driven sizing recommendations without making changes. After 2 weeks, apply p95 recommendations as requests (guaranteed scheduling) with a p99 limit (burst headroom), then use HPA for horizontal scaling. This is 'right-sizing' — allocating what workloads actually need. 3x headroom wastes resources. Requests=Limits (Guaranteed QoS) reduces scheduling flexibility. No requests/limits enables noisy-neighbor problems and evictions.\n\n🔍 Targeted Search: 'GKE right-sizing Vertical Pod Autoscaler recommendation mode', 'Google Cloud Architecture Framework cost optimization'."
+    },
+    {
+      "id": "q041",
+      "domain": "Reliability & WAF",
+      "diff": "hard",
+      "text": "A company wants to implement chaos engineering to improve resilience. They want to test: pod failure recovery, network partition between services, and node pool preemption handling in GKE, without impacting production users. Which approach implements this safely in GCP?",
+      "opts": [
+        "Run failure tests directly in production during low-traffic periods to simulate real conditions",
+        "Use a shadow/staging environment with production-like traffic (generated by Pub/Sub replay), implement fault injection in Cloud Service Mesh (ASM) using VirtualService/FaultInjection, and test Spot VM preemption with a dedicated non-production node pool",
+        "Disable health checks temporarily on production load balancers and measure recovery time",
+        "Randomly delete pods using 'kubectl delete pod' commands on production clusters during off-peak hours"
+      ],
+      "answer": 1,
+      "explanation": "Safe chaos engineering: (1) Staging environment with replayed production traffic (realistic load without real user impact), (2) ASM/Istio FaultInjection policies inject network delays and errors at the service mesh level without code changes — can target specific services and percentages, (3) Test Spot VM preemption impact in a controlled node pool before enabling in production. This is the recommended approach: test in staging with production-like conditions first. Chaos in production without safeguards violates reliability principles (WAF operational excellence).\n\n🔍 Targeted Search: 'Cloud Service Mesh Istio Fault Injection chaos engineering', 'Safe deployment testing in staging GCP'."
+    },
+    {
+      "id": "q042",
+      "domain": "AI / Vertex AI",
+      "diff": "medium",
+      "text": "A retail company wants to build a product recommendation engine. They have 5 years of purchase history (50M rows), customer demographics, and product catalog data. They have no ML engineers but want to deploy a recommendation model within 4 weeks. Which Vertex AI capability is most appropriate?",
+      "opts": [
+        "Build a custom TensorFlow model, train on AI Hypercomputer, deploy to Vertex AI endpoint",
+        "Use Vertex AI AutoML for tabular data with the recommendation use case configuration, enabling automated feature engineering and model selection",
+        "Use BigQuery ML's matrix factorization model directly in BigQuery",
+        "Train a custom PyTorch model on Vertex AI Training, containerize, and deploy to Cloud Run"
+      ],
+      "answer": 1,
+      "explanation": "Vertex AI AutoML Tabular: (1) No ML engineering required, (2) Automated feature engineering handles the structured data, (3) AutoML tests multiple model architectures automatically, (4) 4-week timeline is achievable, (5) Deployment to Vertex AI endpoint is automated. BigQuery ML matrix factorization is viable but less polished for real-time serving. Custom TensorFlow/PyTorch requires ML engineers (violating the no-ML-engineers constraint). This tests v6.1 section 2.5: Configuring pre-built solutions with Vertex AI.\n\n🔍 Targeted Search: 'Vertex AI AutoML Tabular recommendation models', 'GCP pre-built AI solutions for retail'."
+    },
+    {
+      "id": "q043",
+      "domain": "AI / Vertex AI",
+      "diff": "hard",
+      "text": "A company is fine-tuning a large language model (10B parameters) on proprietary training data. They need to complete fine-tuning in under 24 hours to meet a business deadline. The training dataset is 500GB stored in Cloud Storage. Which Vertex AI infrastructure configuration minimizes training time?",
+      "opts": [
+        "Use a single a2-highgpu-8g VM (8x A100 80GB GPUs) as a Vertex AI Custom Training job",
+        "Configure Vertex AI Training with AI Hypercomputer using a distributed training job with multiple a3-megagpu-8g nodes (H100 GPUs), using TPU Pod slices as an alternative if H100s are unavailable",
+        "Use Vertex AI AutoML which automatically optimizes distributed training",
+        "Deploy to Cloud Run with high CPU and run training as a batch job"
+      ],
+      "answer": 1,
+      "explanation": "AI Hypercomputer on Vertex AI is Google Cloud's purpose-built infrastructure for large-scale ML training (directly tested in v6.1). For 10B parameter LLM fine-tuning: (1) Multi-node H100 (a3-megagpu) training with distributed data parallelism completes much faster than a single node, (2) AI Hypercomputer provides optimized networking (RDMA over Converged Ethernet) between GPU nodes for gradient synchronization, (3) TPU Pod slices are an alternative with custom JAX/PyTorch XLA code. AutoML doesn't support custom LLM fine-tuning. Cloud Run has no GPU support for training.\n\n🔍 Targeted Search: 'Google Cloud AI Hypercomputer large-scale training', 'Vertex AI distributed training H100 TPU pods'."
+    },
+    {
+      "id": "q044",
+      "domain": "AI / Vertex AI",
+      "diff": "medium",
+      "text": "Your company wants to build an enterprise chatbot powered by Gemini that can answer questions from company documentation stored in Cloud Storage. The solution must cite sources, handle 1,000 concurrent users, and update with new documents daily. Which Vertex AI component architecture is most appropriate?",
+      "opts": [
+        "Train a custom Gemini model fine-tuned on company documentation, deploy to a Vertex AI endpoint",
+        "Use Vertex AI Agent Builder (formerly Vertex AI Search and Conversation) with a Gemini grounding configuration pointing to a data store backed by company documents in Cloud Storage",
+        "Deploy Gemini via the Vertex AI API and append all company documents in every prompt (RAG via context window)",
+        "Use Vertex AI Model Garden to select a smaller open-source LLM and fine-tune it on company documents"
+      ],
+      "answer": 1,
+      "explanation": "Vertex AI Agent Builder with data store grounding: (1) Automatically indexes documents from Cloud Storage daily, (2) Gemini grounding retrieves relevant chunks via semantic search (RAG), (3) Generates citations from source documents automatically, (4) Scales to concurrent users via managed infrastructure. This tests v6.1 section 2.5 (pre-built AI solutions). Fine-tuning Gemini embeds knowledge at training time — can't easily update or cite sources. Appending all docs in prompts exceeds context limits at scale. Open-source LLMs require ML engineering.\n\n🔍 Targeted Search: 'Vertex AI Agent Builder data store grounding', 'Building enterprise RAG with Gemini Cloud Storage'."
+    },
+    {
+      "id": "q045",
+      "domain": "Case Study: EHR Healthcare",
+      "diff": "hard",
+      "caseContext": "EHR Healthcare provides electronic health record (EHR) software to over 70 hospital systems. Their requirements include: HIPAA compliance, patient data isolation per customer tenant, high availability (99.99%), ML-powered diagnostic assistance, and a legacy on-premises data center running Oracle Database and Windows Server. They are migrating to GCP.",
+      "text": "EHR Healthcare needs to migrate their legacy Oracle Database (8TB, OLTP) to GCP. The solution must: support SQL interfaces for their legacy Java application, maintain ACID compliance, minimize migration risk, and reduce operational overhead post-migration. The legacy app uses Oracle-specific features including PL/SQL stored procedures (20,000 lines). Which migration path is MOST recommended?",
+      "opts": [
+        "Direct migration to BigQuery using BigQuery Migration Service to translate PL/SQL to BigQuery SQL",
+        "Use Database Migration Service to migrate Oracle to Cloud SQL for PostgreSQL, with ora2pg for PL/SQL conversion, and a refactoring period for the Java application",
+        "Migrate to AlloyDB for PostgreSQL using the AlloyDB Omni migration pathway",
+        "Deploy Oracle on Compute Engine (lift-and-shift) as a short-term target, then modernize incrementally to Cloud SQL or AlloyDB"
+      ],
+      "answer": 3,
+      "explanation": "For complex Oracle migrations with 20,000 lines of PL/SQL, a lift-and-shift to Oracle on Compute Engine is the lowest-risk first step: (1) Zero application changes, (2) Preserves all Oracle-specific features, (3) Achieves cloud benefits (managed hardware, backup to Cloud Storage), (4) Provides time for phased PL/SQL modernization to PostgreSQL without the 'big bang' risk. DMS + ora2pg is the end goal but converting 20K lines of PL/SQL simultaneously with migration is high risk. BigQuery is OLAP, not suitable for OLTP EHR workloads.\n\n🔍 Targeted Search: 'Migrating Oracle to Google Cloud lift and shift strategy', 'GCP bare metal solution for Oracle workloads'."
+    },
+    {
+      "id": "q046",
+      "domain": "Case Study: Cymbal Retail",
+      "diff": "hard",
+      "caseContext": "Cymbal Retail is a large retail chain with 500 stores and 10M online customers. Business goals: real-time personalization (product recommendations updated <100ms), inventory optimization using ML, fraud detection at checkout (<50ms latency), and a unified customer data platform. They process 1M transactions/day and have 5TB of historical customer data in an on-premises data warehouse.",
+      "text": "Cymbal Retail needs to build a real-time product recommendation feature. Customer click events must be processed and recommendations updated within 100ms. The recommendation model must retrain daily using the previous 30 days of data. The solution must scale to 10M customers. Which architecture meets all requirements?",
+      "opts": [
+        "Cloud Pub/Sub → Dataflow (streaming) → Vertex AI Feature Store (online serving) → Vertex AI Model Endpoints (recommendation serving); daily batch pipeline: BigQuery → Vertex AI Pipelines → model retraining → deploy to endpoint",
+        "Cloud Spanner (customer events) → Cloud Functions → BigQuery ML model → response",
+        "Firestore (events) → Cloud Run (ML inference) → Cloud Storage (model files); nightly cron job for retraining",
+        "Cloud SQL → Apache Spark on Dataproc → custom recommendation server on GKE"
+      ],
+      "answer": 0,
+      "explanation": "This is the Vertex AI reference architecture for real-time ML: (1) Pub/Sub ingests click events at scale, (2) Dataflow streaming updates Feature Store online serving (low-latency read), (3) Vertex AI Endpoint serves recommendations from Features in <100ms, (4) Daily Vertex AI Pipeline triggers BigQuery→feature engineering→training→Champion/Challenger evaluation→auto-deploy if improved. This covers v6.1 sections 2.4 (ML pipelines) and 2.5 (pre-built solutions). Cymbal Retail is one of the four new 2026 case studies.\n\n🔍 Targeted Search: 'Vertex AI Feature Store online serving latency', 'Real-time machine learning architecture GCP Pub/Sub Dataflow'."
+    },
+    {
+      "id": "q047",
+      "domain": "Case Study: Altostrat Media",
+      "diff": "medium",
+      "caseContext": "Altostrat Media is a digital media company with 50M monthly active users. They produce and distribute video content, run a recommendation engine, and monetize through targeted advertising. Key requirements: content ingestion pipeline (100 new videos/day), real-time audience analytics, AI-powered content moderation, and sub-second ad targeting decisions. Current infrastructure is on AWS and they want to migrate to GCP.",
+      "text": "Altostrat Media needs to implement AI-powered content moderation for uploaded videos (check for policy violations before publishing). Videos are 720p-4K, average 8 minutes long. Moderation must complete within 10 minutes of upload. They want to minimize custom ML development. Which approach is recommended?",
+      "opts": [
+        "Train a custom TensorFlow video classification model on Vertex AI, deploy to a batch prediction endpoint",
+        "Use Video Intelligence API for built-in content moderation (explicit content, violence detection), trigger via Cloud Storage event notification via Pub/Sub → Cloud Functions, store results in Firestore with a publishing workflow",
+        "Build a Vertex AI Pipeline with frame extraction, Cloud Vision API per frame, and aggregate results via Dataflow",
+        "Use Cloud Run with an open-source content moderation library (e.g., NSFW.js)"
+      ],
+      "answer": 1,
+      "explanation": "Video Intelligence API is a pre-trained, managed GCP service for video content analysis: (1) Supports explicit content detection, violence detection, text detection, without training, (2) Event-driven: Cloud Storage trigger → Pub/Sub → Cloud Functions → Video Intelligence API call → Firestore result, (3) Processing time for 8-minute 720p-4K videos is well under 10 minutes, (4) Pay-per-video pricing (no cluster management). This tests v6.1 section 2.5 and Altostrat Media case study. Custom TensorFlow requires ML engineering (violates 'minimize custom ML' requirement).\n\n🔍 Targeted Search: 'Google Cloud Video Intelligence API explicit content detection', 'Event-driven serverless video processing GCP'."
+    },
+    {
+      "id": "q048",
+      "domain": "Case Study: KnightMotives Automotive",
+      "diff": "hard",
+      "caseContext": "KnightMotives Automotive manufactures 500,000 vehicles/year with connected vehicle capabilities. Each vehicle generates 4KB/s of telemetry (GPS, sensor data, diagnostics). Fleet of 2M active vehicles. Requirements: real-time predictive maintenance alerts (< 10 second latency), remote vehicle software OTA updates, edge computing in vehicles for safety-critical decisions, and regulatory compliance for data storage per country (data residency).",
+      "text": "KnightMotives needs to handle 2M connected vehicles generating continuous telemetry (8 GB/s aggregate). They need to detect engine anomalies within 10 seconds and trigger service alerts to dealer networks. The solution must handle intermittent connectivity (vehicles in tunnels, rural areas). Which architecture is most appropriate?",
+      "opts": [
+        "Each vehicle sends HTTPS POST to a Cloud Run endpoint; Cloud Run writes to BigQuery; scheduled query checks anomalies every hour",
+        "Vehicles publish to Cloud Pub/Sub (MQTT bridge); Dataflow streaming job applies ML model (Vertex AI endpoint) for anomaly detection with < 10s window processing; anomalies trigger Pub/Sub notification to dealer notification service; Cloud Storage stores raw telemetry",
+        "Cloud SQL receives all vehicle data via JDBC; stored procedures detect anomalies; Cloud Scheduler triggers dealer notifications",
+        "Vehicles send data to BigQuery Streaming Insert API directly; BigQuery ML model in BQML processes anomalies every 5 minutes"
+      ],
+      "answer": 1,
+      "explanation": "IoT streaming architecture: (1) Pub/Sub handles 8GB/s aggregate with MQTT bridge for vehicle protocols, buffers during connectivity gaps (vehicles re-publish queued messages on reconnection), (2) Dataflow Streaming supports ML model inference inline (Vertex AI endpoint calls or embedded TFLite models in beam pipeline) with sub-10-second windows, (3) Cloud Storage partitioned by vehicle+date provides cheap raw retention for compliance, (4) Pub/Sub notification to dealers completes the chain. Direct BigQuery Streaming at 8GB/s is expensive; no MQTT support. HTTPS polling doesn't handle 10-second SLA with connectivity issues.\n\n🔍 Targeted Search: 'GCP connected vehicle architecture Dataflow Pub/Sub MQTT', 'Real-time anomaly detection streaming pipeline GCP'."
+    },
+    {
+      "id": "q049",
+      "domain": "Reliability & WAF",
+      "diff": "medium",
+      "text": "Your GKE application's Horizontal Pod Autoscaler (HPA) is configured to scale based on CPU utilization (target: 70%). During a traffic spike, you notice that pods scale up but the new pods are stuck in 'Pending' state for 5 minutes before becoming ready, causing the SLO to breach. What is the likely root cause and fix?",
+      "opts": [
+        "The HPA is misconfigured; increase the target CPU to 90%",
+        "Node autoscaling is the bottleneck — nodes take time to provision; enable cluster autoscaler with --scale-down-delay=0 to speed up provisioning",
+        "Cluster autoscaler is triggering node provisioning which takes 3-5 minutes; configure node auto-provisioning with a pre-warmed node pool buffer using Pause Pods or set a minimum node count",
+        "The Docker image is too large; reduce image size to speed up pulls"
+      ],
+      "answer": 2,
+      "explanation": "Classic GKE scaling bottleneck: HPA triggers pod creation → no available node capacity → Cluster Autoscaler provisions new nodes (3-5 min) → pods Pending during this time. Solutions: (1) Maintain a minimum node count for burst capacity (warm nodes ready), (2) Use Pause Pods (placeholder pods) that consume node capacity without real workload — cluster stays warm, (3) Node auto-provisioning with buffer. The --scale-down-delay flag controls scale-down, not scale-up speed. Image size affects readiness time after node is available, not Pending time.\n\n🔍 Targeted Search: 'GKE Pause Pods for node pre-warming autoscaling', 'GKE node auto-provisioning configuration guidelines'."
+    },
+    {
+      "id": "q050",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "Your organization's Cloud Audit Logs show that a service account 'data-pipeline-sa' made 500 unexpected BigQuery table reads on datasets it should not have access to, at 3am. Cloud Monitoring did not alert. The service account key was last rotated 6 months ago. What immediate and long-term actions should you take? Choose the most comprehensive response.",
+      "opts": [
+        "Change the service account key and monitor for 24 hours",
+        "Immediately disable the service account key and revoke its IAM bindings; investigate CloudTrail for the source IP and user agent; implement Workload Identity to eliminate key-based authentication; create SCC custom detector for anomalous service account data access patterns; enable Security Command Center Premium for UEBA",
+        "Enable Cloud DLP to scan all datasets the service account accessed",
+        "Rotate the service account key and add a Cloud Monitoring alert on BigQuery reads"
+      ],
+      "answer": 1,
+      "explanation": "Comprehensive incident response: (1) Immediate: disable compromised key + revoke bindings (stop active threat), (2) Forensics: Cloud Audit Logs for source IP/user-agent to understand breach vector, (3) Long-term: Workload Identity eliminates key-based auth (no key = no key compromise), (4) Detection: SCC Premium's UEBA (User and Entity Behavior Analytics) detects anomalous service account behavior automatically (this is what should have alerted at 3am), (5) Custom detector for ongoing monitoring. Rotating the key while keeping it active leaves the window open. This tests the security posture improvement lifecycle.\n\n🔍 Targeted Search: 'GCP responding to compromised service account credentials playbook', 'Security Command Center Premium UEBA features'."
+    }
+  ],
+  "pca:domain-mastery": {
+    "Designing & Planning": {
+      "total": 24,
+      "correct": 0
+    },
+    "Managing & Provisioning": {
+      "total": 12,
+      "correct": 0
+    },
+    "Case Study: Cymbal Retail": {
+      "total": 2,
+      "correct": 0
+    },
+    "Managing Implementation": {
+      "total": 8,
+      "correct": 0
+    },
+    "Security & Compliance": {
+      "total": 18,
+      "correct": 0
+    },
+    "Analyzing & Optimizing": {
+      "total": 12,
+      "correct": 0
+    },
+    "AI / Vertex AI": {
+      "total": 6,
+      "correct": 1
+    },
+    "Case Study: Altostrat Media": {
+      "total": 3,
+      "correct": 0
+    },
+    "Reliability & WAF": {
+      "total": 12,
+      "correct": 0
+    },
+    "Case Study: EHR Healthcare": {
+      "total": 3,
+      "correct": 0
+    },
+    "Case Study: KnightMotives Automotive": {
+      "total": 3,
+      "correct": 1
+    }
+  },
+  "pca:stats": {
+    "sessions": 5,
+    "bestScore": 100
+  },
+  "pca:last-session": {
+    "date": "2026-04-02T05:45:24.359Z",
+    "score": 100,
+    "total": 1,
+    "answers": {
+      "0": 1
+    },
+    "questionIds": [
+      "q048"
+    ]
+  },
+  "pca:ai-questions": [
+    {
+      "id": "ai-adapt-001",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "learning_objective": "Understand when and how to implement forced regeneration of infrastructure components during architectural design phase",
+      "text": "A financial services company is designing a multi-region disaster recovery architecture for their trading platform. They must ensure that every 6 months, all infrastructure components (VMs, databases, load balancers) are rebuilt from scratch to comply with security audit requirements, even if currently operational. Which design approach best addresses this requirement while maintaining service availability?\n\nA) Implement Infrastructure-as-Code (IaC) with version control and automated deployment pipelines that can rebuild all resources in parallel across regions\nB) Use manual snapshots and restore procedures triggered by compliance officers\nC) Rely on GCP's managed services auto-scaling to handle component refresh\nD) Create static resource configurations that persist indefinitely with quarterly manual updates",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "Option A is correct because forced regeneration requires infrastructure-as-code capabilities that enable repeatable, automated rebuilding of all components from definition rather than state. This allows scheduled, controlled destruction and recreation while maintaining service through Blue-Green or Canary deployments. Option B fails due to manual processes being non-scalable and error-prone. Option C is incorrect because auto-scaling reacts to load, not forced regeneration schedules. Option D contradicts the forced regeneration requirement entirely. The key principle is that admin-forced regeneration must be architecturally planned with IaC, CI/CD pipelines, and zero-downtime deployment strategies."
+    },
+    {
+      "id": "ai-adapt-002",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "learning_objective": "Master provisioning strategies that support forced regeneration cycles without service degradation",
+      "text": "An e-commerce platform running on GCP experiences mandatory quarterly infrastructure regeneration for compliance reasons. Currently, they provision resources manually through the console, taking 8 hours to complete. During regeneration, the system experiences 2-hour downtime. The platform generates $500K in revenue during each downtime window. What provisioning approach should be implemented?\n\nA) Use Terraform modules with immutable infrastructure patterns, implementing canary deployments where new infrastructure handles 5% traffic while old infrastructure handles 95%, then gradually shifting traffic over 30 minutes\nB) Implement Infrastructure-as-Code but continue sequential provisioning to maintain visibility\nC) Increase provisioning speed through larger teams and parallel manual processes\nD) Schedule regeneration during low-traffic periods and accept the downtime as unavoidable",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "Option A is correct because it combines infrastructure-as-Code (Terraform) with immutable infrastructure patterns and traffic shifting strategies (canary deployments). This enables zero-downtime forced regeneration by provisioning new infrastructure in parallel while the old serves traffic, then shifting load gradually. This approach reduces downtime from 2 hours to near-zero and prevents revenue loss. Option B lacks the deployment strategy for zero-downtime transitions. Option C attempts to solve an architectural problem with resource addition, which is inefficient. Option D accepts unacceptable business impact. The core principle is that forced regeneration must be decoupled from service availability through parallel provisioning and graceful traffic migration strategies."
+    },
+    {
+      "id": "ai-adapt-003",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "learning_objective": "Design security controls that enforce admin-triggered forced regeneration while maintaining compliance and data integrity",
+      "text": "A healthcare organization must implement forced regeneration of all compute infrastructure monthly per HIPAA requirements. However, they store patient data on persistent disks that cannot be regenerated due to data retention obligations. Additionally, they need audit trails proving that regeneration occurred and that no data was compromised during the transition. What architecture best satisfies these requirements?\n\nA) Decouple stateless compute (VMs, containers) from stateful storage (persistent disks), implement forced VM regeneration through instance templates and managed instance groups, mount persistent disks after regeneration, and use Cloud Audit Logs with log sink to GCS for immutable audit trail with retention lock\nB) Store all data in in-memory caches that regenerate with the compute layer\nC) Implement full data backup/restore with each compute regeneration cycle\nD) Use snapshots to preserve entire disk state before regeneration, then restore identical state afterward",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "Option A is correct because it separates concerns: stateless compute (which can be safely regenerated) from stateful storage (which persists). This allows monthly compute regeneration without touching patient data. Cloud Audit Logs with retention lock provides immutable, tamper-proof evidence of regeneration activities required for compliance. Option B violates data persistence requirements for healthcare. Option C introduces unnecessary data movement risks and complexity. Option D is inefficient as it includes data already protected on persistent storage. The core principle is that forced regeneration must architecturally isolate components that can be regenerated from those that must persist, with cryptographic proof of actions through immutable audit logging."
+    },
+    {
+      "id": "ai-adapt-004",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "learning_objective": "Execute forced regeneration procedures while maintaining system integrity, handling failures, and coordinating dependencies",
+      "text": "A media company implements weekly forced regeneration of their Kubernetes clusters (15 nodes) running live video streaming services serving 10M concurrent users. During a recent regeneration, 3 nodes failed to drain connections gracefully before termination, causing 50K stream interruptions. What implementation strategy should be adopted?\n\nA) Implement Pod Disruption Budgets (PDB) with minAvailable=12 (80% of nodes), use PreStop lifecycle hooks for graceful connection draining (30-second timeout), implement node drain with --ignore-daemonsets flag, verify all pods successfully rescheduled before removing nodes, and rollback automated if drain takes >5 minutes per node\nB) Increase node count to 20 so losing 3 nodes is less impactful\nC) Disable autoscaling and manually confirm each pod migration before node termination\nD) Regenerate nodes during scheduled maintenance windows when user load is lower",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "Option A is correct because it implements multiple layers of protection for graceful forced regeneration: PDB ensures minimum availability during regeneration, PreStop hooks allow applications time to close connections, the drain process respects DaemonSets, verification prevents orphaned pods, and automatic rollback prevents cascading failures. This handles the core problem (connection loss) at the application level. Option B addresses scale but doesn't solve the graceful termination issue. Option C introduces manual bottlenecks incompatible with forced regeneration cycles. Option D contradicts the mandatory nature of forced regeneration. The principle is that forced regeneration requires orchestrating dependent components through Kubernetes lifecycle management, availability budgets, and automated validation/rollback mechanisms."
+    },
+    {
+      "id": "ai-adapt-005",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "learning_objective": "Measure and optimize the overhead and blast radius of forced regeneration cycles to minimize operational impact",
+      "text": "An analytics platform must execute forced infrastructure regeneration every 72 hours. Current regeneration takes 4 hours, during which query latency increases 300% due to cache cold starts and workload contention. The business unit loses $200K per hour of degraded performance. Analysis shows 2 hours are spent regenerating compute nodes and 2 hours rebuilding in-memory caches. What optimization strategy should be prioritized?\n\nA) Implement cache warming: create replica compute/cache infrastructure in parallel, warm the replica with query patterns from Cloud Trace and Cloud Logging historical analysis, validate replica health with synthetic queries, then instantly switch traffic using Cloud Load Balancer cookie-based session persistence with 30-second draining, reducing regeneration impact to <15 minutes and degradation to <20%\nB) Increase compute resources to absorb the 300% latency spike without user impact\nC) Extend regeneration cycles to every 168 hours to reduce frequency\nD) Accept the performance degradation as an unavoidable cost of forced regeneration",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "Option A is correct because it recognizes that the 2-hour cache cold-start overhead is addressable through parallel infrastructure and intelligent warm-up. Using historical query patterns from observability tools (Cloud Trace/Logging) to pre-populate caches on replica infrastructure, then traffic switching, transforms a 4-hour window into near-zero user impact. This costs $50K in extra infrastructure but saves $800K in lost revenue per cycle ($200K × 4 hours), providing strong ROI. Option B treats symptoms (latency) rather than root cause (cache warming). Option C is impossible if regeneration is mandatory. Option D ignores cost-benefit analysis. The principle is that forced regeneration overhead must be analyzed through observability data, and optimization should focus on parallel warm-up patterns and intelligent traffic switching rather than extending cycles or over-provisioning."
+    },
+    {
+      "id": "ai-adapt-001",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "learning_objective": "Understand admin-forced generation patterns in infrastructure design decisions and their architectural implications",
+      "text": "A financial services company is designing a multi-region GCP architecture for real-time fraud detection. Their compliance framework requires that all cryptographic keys must be automatically rotated every 90 days without manual intervention. During the design phase, the architect must decide between Cloud KMS with automatic key rotation enabled vs. managing keys through a custom HSM solution. Which approach best addresses the requirement while minimizing operational overhead and maintaining audit compliance?\n\nA) Implement custom HSM solution with scripts that enforce key rotation on a schedule, allowing administrators to override rotation when needed\nB) Configure Cloud KMS with automatic key version generation enabled and immutable rotation policies that cannot be bypassed by any administrator\nC) Use Cloud KMS with automatic rotation disabled and create a Cloud Scheduler job that administrators must manually trigger every 90 days\nD) Deploy a hybrid approach using Cloud KMS for non-critical keys and HSM for critical keys where admin override is required",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 1,
+      "explanation": "This question tests understanding of 'admin forced generation' - the architectural pattern where critical operations like key rotation are enforced automatically without admin override capability. Option B is correct because Cloud KMS with immutable rotation policies ensures keys are automatically generated on schedule regardless of administrator actions, preventing security gaps from administrative delays or errors. This enforced automation is critical for compliance-driven architectures. Options A and D introduce discretionary elements that violate the forced generation principle. Option C relies on manual triggering, defeating the 'forced' aspect of the pattern."
+    },
+    {
+      "id": "ai-adapt-002",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "learning_objective": "Apply admin-forced generation patterns in infrastructure provisioning pipelines to ensure consistent security posture",
+      "text": "A healthcare organization is provisioning a new Kubernetes cluster on GCP to replace a legacy system. Their security policy mandates that all nodes must run the latest validated container image within 24 hours of release, with no administrator exceptions or delays permitted. They are evaluating their provisioning approach. Which solution best implements this requirement?\n\nA) Configure GKE with Node Auto-Upgrade enabled and immutable maintenance windows, forcing automatic node updates without administrator consent\nB) Set up Cloud Build to trigger on container image releases, which pushes updates to a staging cluster for 7 days of manual testing before promotion\nC) Use Compute Engine VM instances with manual image updates scheduled through Cloud Scheduler, requiring admin approval before execution\nD) Implement a custom solution using gcloud commands that administrators must run manually on a scheduled basis",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 0,
+      "explanation": "This question evaluates understanding of enforced, non-discretionary infrastructure generation. Option A correctly implements admin-forced generation by using GKE's automatic node upgrade feature with immutable maintenance windows - updates happen automatically without administrative override capability. This ensures compliance with the 24-hour requirement. Option B introduces manual testing delays that violate the enforcement requirement. Options C and D both include manual/approval steps that allow administrators to bypass or delay the forced generation of updated nodes. In security-critical provisioning scenarios, forced automation prevents human error and policy violations."
+    },
+    {
+      "id": "ai-adapt-003",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "learning_objective": "Design security controls using admin-forced generation to prevent unauthorized access and ensure audit trail integrity",
+      "text": "A regulatory-constrained media company must ensure that access logs for sensitive customer data are immutably recorded and cannot be deleted or modified by any administrator, even with elevated privileges. They are designing a Cloud Logging and Cloud Audit Logs strategy. Which architecture implements admin-forced generation for audit compliance?\n\nA) Store audit logs in Cloud Logging with retention set to 30 days, allowing administrators with Security Admin role to extend retention if needed\nB) Configure Cloud Audit Logs with sink to Cloud Storage with Object Lock enabled and Log Sink immutability settings that prevent deletion or modification by any principal\nC) Use Cloud Logging export to BigQuery with role-based access control limiting administrator modifications to approved change windows\nD) Implement custom logging application that writes to Firestore with admin approval workflows before log deletion",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 1,
+      "explanation": "This question tests admin-forced generation in the context of security controls and audit trails. Option B is correct because it combines Cloud Audit Logs (forced generation of logs) with Cloud Storage Object Lock (forced immutability) and sink immutability settings - creating a system where logs are automatically generated and cannot be administratively modified or deleted. This is the strongest forced generation pattern for compliance. Option A allows admin discretion in retention. Option C permits scheduled modifications through approvals. Option D relies on workflow approval that could be bypassed. True admin-forced generation for audit compliance requires technical controls that override administrative privilege."
+    },
+    {
+      "id": "ai-adapt-004",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "learning_objective": "Implement admin-forced generation patterns during deployment to enforce consistent configuration and prevent configuration drift",
+      "text": "An e-commerce platform is implementing infrastructure-as-code deployment pipelines on GCP using Terraform. The architecture must guarantee that all production databases are created with automated backup snapshots every 6 hours, with zero possibility of administrators disabling this feature post-deployment. Which implementation pattern best ensures admin-forced generation of backups?\n\nA) Define Cloud SQL backup schedules in Terraform as optional variables, allowing administrators to customize backup frequency after deployment\nB) Create Terraform modules with backup policies defined in immutable locals and apply enforcement through google_sql_backup_run resource with lifecycle rules that prevent destruction\nC) Use Cloud SQL with default backup settings and document the procedure for administrators to enable automated backups on demand\nD) Implement backup automation through Cloud Functions triggered by Cloud Scheduler, allowing administrators to pause the scheduler during maintenance windows",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 1,
+      "explanation": "This question assesses admin-forced generation in IaC implementation. Option B correctly uses Terraform's immutable locals and lifecycle rules to enforce backup policies that cannot be administratively disabled post-deployment. The lifecycle rules prevent destruction/modification of backup resources, creating enforced automation. Option A introduces post-deployment discretion. Option C relies on manual configuration. Option D allows administrative pause capability. In IaC, true forced generation requires configuration that prevents both modification and deletion, ensuring the automation persists regardless of later administrative changes."
+    },
+    {
+      "id": "ai-adapt-005",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "learning_objective": "Optimize cloud architectures by leveraging admin-forced generation to reduce operational costs while maintaining compliance requirements",
+      "text": "A research institution is optimizing GCP spending while maintaining compliance with data retention regulations that require automatic encrypted backups of all datasets. Currently, administrators manually trigger backup jobs monthly, resulting in missed backups and increased compliance costs. The optimization must reduce manual operations while guaranteeing backup generation. Which solution provides the best cost-optimized admin-forced generation pattern?\n\nA) Implement Cloud Datastore automatic backups with export_scheduled set to monthly, allowing cost reduction through reduced backup frequency\nB) Configure BigQuery dataset snapshots with time-to-live policies that automatically create and delete snapshots on a schedule, combined with immutable retention rules preventing administrator modification\nC) Use manual backup scripts with Cloud Scheduler that send notifications to administrators when backups fail, allowing them to retry manually\nD) Deploy multiple backup redundancy across regions with administrator-configurable backup windows to optimize network utilization",
+      "opts": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 1,
+      "explanation": "This question combines admin-forced generation with cost optimization analysis. Option B is optimal because BigQuery's automatic snapshot creation with TTL policies enforces backup generation without manual intervention, while immutable retention rules prevent cost-cutting measures that might sacrifice compliance. This reduces operational costs (fewer manual operations, no failed backups requiring remediation) while maintaining forced generation. Option A relies on manual monthly triggering. Option C requires administrator intervention after failures. Option D allows administrators to adjust windows in ways that risk missing backups. True optimization of admin-forced generation patterns lies in fully automated systems that eliminate both operational overhead AND compliance risk."
+    }
+  ]
+}
