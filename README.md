@@ -2,7 +2,7 @@
 
 A single-page Node.js + vanilla-JS web app that helps you prepare for the **Google Cloud Professional Cloud Architect (PCA)** exam with an exam-grade question bank, AI-powered remediation, and adaptive sprints that target your weakest domains.
 
-The project ships with **70+ expert-written scenario questions** across all six PCA blueprint domains (medium / hard / challenging difficulty) and a swappable AI backend that works with **Anthropic Claude**, **Google Gemini**, or **OpenAI ChatGPT** — pick whichever you prefer in `.env` and the rest of the app is unchanged.
+The project ships with **120+ expert-written scenario questions** across all six PCA blueprint domains (medium / hard / challenging difficulty) and a swappable AI backend that works with **Anthropic Claude**, **Google Gemini**, or **OpenAI ChatGPT** — pick whichever you prefer in `.env` and the rest of the app is unchanged.
 
 You can also generate **unlimited additional questions** through the built-in Admin UI using your own API key. No vendor lock-in, no signup, runs entirely on your laptop.
 
