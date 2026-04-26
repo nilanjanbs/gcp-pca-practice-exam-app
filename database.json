@@ -1679,6 +1679,146 @@
       ],
       "answer": 1,
       "explanation": "DMS supports homogeneous PostgreSQL major-version upgrades via logical replication \u2014 you keep the old instance running while validating the new one, then cut over with minimal downtime. Direct in-place major upgrade is supported but harder to roll back. Backup-restore loses post-backup writes. Snapshot import doesn't migrate replicated state cleanly across major versions.\n\n\ud83d\udd0d Targeted Search: 'Cloud SQL major version upgrade DMS', 'Database Migration Service PostgreSQL upgrade'."
+    },
+    {
+      "id": "q121",
+      "domain": "Designing & Planning",
+      "diff": "challenging",
+      "text": "A fintech wants to detect money-laundering rings by traversing many-hop relationships (sender \u2192 receiver \u2192 receiver \u2026) across 9 billion transactions in near-real time, while also keeping strong consistency for the underlying account ledger. The team needs ACID writes AND graph traversal queries on the same dataset, without ETLing to a separate graph store. Which approach is correct?",
+      "opts": [
+        "Store everything in BigQuery and use recursive CTEs for graph traversal",
+        "Use Cloud Spanner with the **Spanner Graph (GQL/ISO GQL)** schema and queries \u2014 transactions land in normal relational tables and are simultaneously exposed as a property graph for multi-hop GQL queries, all in one store with Spanner's strong consistency",
+        "Use Bigtable for the ledger and JanusGraph on GKE for graph queries, kept in sync via Pub/Sub",
+        "Use AlloyDB with the Apache AGE graph extension"
+      ],
+      "answer": 1,
+      "explanation": "Spanner Graph (GA in 2024-2025) lets you define property-graph schemas over existing Spanner tables and run ISO GQL queries (MATCH \u2026 PATTERN \u2026), so OLTP writes and multi-hop traversal share one strongly-consistent store \u2014 ideal for fraud/AML rings. BigQuery recursive CTEs are batch and have depth/perf limits. JanusGraph adds a second store and replication lag (breaks consistency). AlloyDB with AGE is single-region OLTP, not horizontally scalable to 9B edges with global consistency.\n\n\ud83d\udd0d Targeted Search: 'Spanner Graph GQL', 'ISO GQL Spanner property graph'."
+    },
+    {
+      "id": "q122",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "A data team runs Cloud Composer 2 (managed Airflow) DAGs that need to read from BigQuery datasets in 5 different projects and pull DB credentials at runtime. Security requires: (a) no long-lived service-account keys in the Composer environment, (b) per-DAG least-privilege, (c) secret material never written to GCS DAG bucket. Which design meets all three?",
+      "opts": [
+        "Store credentials as Airflow Variables in the metadata DB and use the default Composer SA for everything",
+        "Enable **Workload Identity** on the Composer 2 GKE cluster, bind a **per-DAG (per-namespace/KSA) Google service account** with only the BigQuery roles it needs, and pull DB secrets at runtime via the **Secret Manager backend for Airflow Connections**",
+        "Mount a JSON key file from a Cloud Storage bucket via FUSE for each DAG",
+        "Use the Composer environment's default service account and grant it Editor on all five projects"
+      ],
+      "answer": 1,
+      "explanation": "Composer 2 runs on GKE; Workload Identity lets each KSA impersonate a distinct Google SA scoped per DAG \u2014 no static keys. Secret Manager backend for Airflow Connections pulls secrets at task runtime so they never live in the DAG bucket or metadata DB. Variables in metadata DB violate (c). FUSE-mounted keys violate (a). Default-SA-Editor violates (b).\n\n\ud83d\udd0d Targeted Search: 'Composer Workload Identity per DAG', 'Airflow Secret Manager backend GCP'."
+    },
+    {
+      "id": "q123",
+      "domain": "Designing & Planning",
+      "diff": "challenging",
+      "text": "A bank exposes regulated APIs to partner banks. Requirements: (a) clients must present a partner-issued mTLS certificate that the API gateway forwards untouched to backend microservices for legal-attestation reasons, (b) traffic must NEVER traverse the public internet between the client's VPC and the gateway, (c) full Apigee policy enforcement (quotas, schema validation) still applies. Which design meets all three?",
+      "opts": [
+        "Apigee X with a **public** load balancer and Cloud Armor IP allowlist; terminate mTLS at Apigee and re-encrypt to backend",
+        "Apigee X with **mTLS pass-through** behind an Internal Application Load Balancer published as a **Private Service Connect** service; partner banks consume it via PSC endpoints in their VPCs \u2014 client cert is forwarded to the backend in a header, no public hop, full Apigee policies still execute",
+        "Cloud Endpoints (ESPv2) on Cloud Run with public ingress and IAP",
+        "API Gateway (managed) over a Serverless NEG"
+      ],
+      "answer": 1,
+      "explanation": "Apigee X supports forwarding the client cert via X-SSL-CLIENT-CERT, which preserves the original cert for backend attestation. Publishing it as a PSC service producer lets partners consume via PSC endpoints in their own VPC (no internet). Apigee runtime still enforces all policies. The other options either terminate mTLS (breaking attestation), require public ingress, or lack mTLS pass-through.\n\n\ud83d\udd0d Targeted Search: 'Apigee X mTLS pass-through', 'Apigee Private Service Connect publishing'."
+    },
+    {
+      "id": "q124",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "text": "A regulated org wants Cloud Build to: (a) run inside a perimeter so build-time access to Artifact Registry, Secret Manager, and a private Cloud SQL is over private IP only; (b) inherit VPC Service Controls perimeter rules; (c) reach a private GitHub Enterprise via a Cloud NAT-less private path. Which option satisfies all three?",
+      "opts": [
+        "Use the default Cloud Build pool with a Serverless VPC Connector",
+        "Use a **Cloud Build private pool** in a peered tenant VPC, attach the pool to your VPC via **Private Service Connect**, place the project inside a **VPC SC perimeter**, and reach GitHub Enterprise via the existing on-prem hybrid (Interconnect/VPN)",
+        "Run builds on a self-managed GKE cluster with kaniko",
+        "Use Cloud Build with a public IP allowlist on Artifact Registry"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Build private pools run in a Google-managed tenant VPC peered to yours via PSC, which is the supported way to make build steps respect VPC SC and reach private resources without a public hop. The default pool is public-IP. Self-managed GKE works but loses the managed-pool guarantees and is operationally heavy. Public allowlists violate the perimeter requirement.\n\n\ud83d\udd0d Targeted Search: 'Cloud Build private pool VPC SC', 'Cloud Build private worker pool peering'."
+    },
+    {
+      "id": "q125",
+      "domain": "Reliability & Operations",
+      "diff": "challenging",
+      "text": "A SAP HANA scale-out cluster on GCE needs a shared file system for /hana/shared with: (a) >10 GB/s aggregate throughput, (b) NFSv4.1 with multi-mount from 8 hosts, (c) per-share snapshots and cross-zone HA, (d) the same share concurrently visible to a parallel HPC genomics workload of 200 nodes. Which Filestore configuration is correct?",
+      "opts": [
+        "Filestore **Basic HDD** at 64 TB, mount from all hosts",
+        "Filestore **Enterprise** tier, single share, single zone",
+        "Filestore **Zonal** tier with multi-share enabled, take per-share snapshots, and front it with HA via **Filestore regional replication** for cross-zone DR; mount the same share read-write on SAP and HPC fleets",
+        "Persistent Disk Multi-writer Hyperdisk Balanced shared across all hosts"
+      ],
+      "answer": 2,
+      "explanation": "Filestore Zonal (formerly High Scale) supports multi-share, high throughput (>10 GB/s), per-share snapshots, and now offers regional replication for cross-zone HA \u2014 the only tier that hits all four requirements. Basic HDD lacks throughput. Enterprise (Regional) is HA but doesn't reach >10 GB/s aggregate at sufficient capacity. Multi-writer PD/Hyperdisk doesn't expose POSIX/NFS semantics needed by HANA.\n\n\ud83d\udd0d Targeted Search: 'Filestore Zonal multi-share', 'Filestore regional replication'."
+    },
+    {
+      "id": "q126",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "A real-time leaderboard service stores 800 GB of hot game state in Redis. Requirements: (a) horizontal scale beyond a single Redis primary's memory, (b) automatic shard rebalancing, (c) zonal-failure survival, (d) cluster-mode-aware Redis client compatibility. Which option is correct?",
+      "opts": [
+        "Memorystore for Redis Standard tier, scale up the primary to 300 GB",
+        "**Memorystore for Redis Cluster** (sharded) with multiple shards each with replicas across zones \u2014 supports horizontal scale, automatic rebalancing, and zonal HA via per-shard replicas",
+        "Cloud Bigtable with TTL for hot keys",
+        "Self-managed Redis Cluster on GKE Autopilot"
+      ],
+      "answer": 1,
+      "explanation": "Memorystore for Redis Cluster (GA 2024) is the managed sharded Redis offering that satisfies all four needs out of the box. The Standard tier is a single primary + replica and caps total memory by a single VM. Bigtable changes the API model. Self-managed Redis on GKE works but loses the managed-service guarantees.\n\n\ud83d\udd0d Targeted Search: 'Memorystore for Redis Cluster sharded', 'Memorystore Redis Cluster zones'."
+    },
+    {
+      "id": "q127",
+      "domain": "Security & Compliance",
+      "diff": "challenging",
+      "text": "A retailer's e-commerce site is being hit by a bot army scraping prices and faking checkout traffic from rotating residential IPs. Requirements: (a) block credential-stuffing without breaking real users, (b) enforce JS-challenge / reCAPTCHA on suspicious sessions only, (c) cache static assets at edge, (d) policy decisions made at edge before reaching the origin LB. Which option meets all four?",
+      "opts": [
+        "Cloud CDN with origin Cloud Armor security policies only",
+        "**Cloud Armor edge security policies** attached at the Cloud CDN edge with **bot management (reCAPTCHA Enterprise integration)** for adaptive challenges, plus origin policies for deeper checks; static assets served from Cloud CDN cache",
+        "App Engine with custom WAF rules in middleware",
+        "GKE ingress with NGINX rate-limit annotations and Cloud CDN"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Armor edge security policies evaluate at the CDN edge before the origin, and the reCAPTCHA Enterprise integration lets you issue JS / interactive challenges adaptively per-session rather than blanket-blocking residential IPs. Origin-only policies are too late (cache miss already happened). App Engine middleware lacks edge enforcement. NGINX rate-limit doesn't do session scoring.\n\n\ud83d\udd0d Targeted Search: 'Cloud Armor edge security policy', 'Cloud Armor reCAPTCHA Enterprise bot management'."
+    },
+    {
+      "id": "q128",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A platform team observes that GKE pods using a 6 GB container image take 90+ seconds to schedule onto fresh nodes during traffic spikes, blowing past the HPA target. They need pods to start fast on cold nodes WITHOUT pre-warming a large standby pool. Which combination is correct?",
+      "opts": [
+        "Disable image GC and increase node disk size",
+        "Enable **GKE Image Streaming** (so the container starts before the full image is pulled) and configure **Node Auto-Provisioning** to add nodes from a pool that already has the streaming-capable disk type \u2014 cold-node pod start drops dramatically",
+        "Run a DaemonSet that warm-pulls every image on every node",
+        "Increase the HPA cooldown window and accept slower spikes"
+      ],
+      "answer": 1,
+      "explanation": "Image Streaming mounts the image read-on-demand from Artifact Registry so the container is up before the layers are fully resident, which directly attacks cold-start time on large images. Node Auto-Provisioning pairs it with elastic capacity. Warm-pull DaemonSets blow up disk and pull bandwidth. Disabling GC doesn't help cold nodes. Loosening HPA hides the symptom.\n\n\ud83d\udd0d Targeted Search: 'GKE Image Streaming', 'GKE Node Auto Provisioning Image Streaming'."
+    },
+    {
+      "id": "q129",
+      "domain": "Reliability & Operations",
+      "diff": "challenging",
+      "text": "An enterprise runs production VMs in **Google Cloud VMware Engine (GCVE)** in us-east4. Requirements: (a) immutable, application-consistent backups retained 7 years; (b) cross-region DR to us-west1 with RPO \u2264 15 min for tier-1 VMs; (c) one pane of glass that also covers their GCE VMs and Cloud SQL; (d) no agent installed inside guest OS for Windows VMs. Which option meets all four?",
+      "opts": [
+        "Use Veeam on a GCE VM, snapshot VMDKs to GCS",
+        "Use **Backup and DR Service** \u2014 VMware-native, agentless backups via vStorage APIs (VADP); apply an immutable backup plan with 7-year retention to a backup vault; configure cross-region DR for tier-1 VMs; the same service backs up GCE and Cloud SQL from one console",
+        "Snapshot the underlying ESXi datastores to a GCS bucket",
+        "Use Cloud Storage Transfer Service to copy VMDK files nightly"
+      ],
+      "answer": 1,
+      "explanation": "Backup and DR Service (the Actifio successor) is the GCP-native data-protection plane that does agentless VMware backups via VADP, supports immutable retention with backup vaults, cross-region DR with low RPO, and unified policy across GCE / Cloud SQL / GKE / VMware in one console \u2014 the only option meeting all four. Veeam works but adds licensing/agents. Datastore snapshots aren't application-consistent. STS doesn't quiesce VMs.\n\n\ud83d\udd0d Targeted Search: 'Backup and DR Service VMware Engine', 'Google Backup and DR immutable vault'."
+    },
+    {
+      "id": "q130",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "An enterprise has 6 GCP VPCs (3 prod, 3 non-prod), an AWS VPC, and an Azure VNet, all of which must reach each other with: (a) transitive routing, (b) centralized policy, (c) no full-mesh VPN/Interconnect, (d) Google's backbone for inter-region GCP traffic. Which design is correct?",
+      "opts": [
+        "Full mesh of HA VPN tunnels between every pair",
+        "**Network Connectivity Center (NCC) hub** with the 6 VPCs attached as VPC spokes and AWS/Azure attached as **hybrid spokes** (HA VPN or Interconnect) \u2014 NCC provides transitive any-to-any routing through a single hub, centralized routing policy, and uses Google's backbone for inter-region GCP traffic",
+        "Shared VPC across all GCP projects and VPN to AWS/Azure",
+        "VPC Peering mesh between the 6 GCP VPCs"
+      ],
+      "answer": 1,
+      "explanation": "NCC is the supported way to get transitive routing in GCP \u2014 VPC Peering is non-transitive by design. With Cross-Cloud Network patterns, AWS/Azure attach as hybrid spokes via HA VPN or Interconnect, and Google's backbone carries inter-region traffic between GCP spokes. Full mesh VPN explodes operationally. Shared VPC doesn't span clouds. Peering mesh isn't transitive.\n\n\ud83d\udd0d Targeted Search: 'Network Connectivity Center hub VPC spokes', 'Cross-Cloud Network NCC hybrid spoke'."
     }
   ],
   "pca:domain-mastery": {},
