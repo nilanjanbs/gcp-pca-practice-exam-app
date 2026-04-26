@@ -49,6 +49,21 @@
         </div>
       </header>
 
+      <div id="onboarding-card" class="onboarding-card" style="display:none;" role="region" aria-label="Welcome and getting started">
+        <button class="onboarding-close" type="button" onclick="dismissOnboarding()" aria-label="Dismiss welcome">×</button>
+        <h3>Welcome — let's find your weak spots</h3>
+        <p>Three steps to get started. Each one builds on the last.</p>
+        <ol class="onboarding-steps">
+          <li><span class="ob-num">1</span><div><strong>Take a 10-question diagnostic</strong><br><span>Quick read of where you stand across PCA domains.</span></div></li>
+          <li><span class="ob-num">2</span><div><strong>See your weakest domain</strong><br><span>The heatmap below highlights what to focus on.</span></div></li>
+          <li><span class="ob-num">3</span><div><strong>Run an AI Adaptive Sprint</strong><br><span>Targeted practice on what you missed.</span></div></li>
+        </ol>
+        <div class="onboarding-actions">
+          <button class="btn-primary" type="button" onclick="startDiagnostic()" style="width:auto; padding:10px 22px;">Start the diagnostic →</button>
+          <button class="btn-text" type="button" onclick="dismissOnboarding()">Skip</button>
+        </div>
+      </div>
+
       <div id="daily-review-banner" class="daily-review-card" style="display:none;" role="region" aria-label="Daily review reminder">
         <div class="daily-review-flex">
           <div>
@@ -70,31 +85,68 @@
         <div class="stat-box"><div class="num" id="home-bestscore">—</div><div class="lbl">Best Score</div></div>
       </section>
 
-      <section class="heatmap-section" aria-label="Domain mastery heatmap">
-        <h3>Domain Mastery Heatmap</h3>
-        <div id="heatmap-grid" class="heatmap-grid"></div>
+      <section class="collapsible heatmap-section" data-collapsible aria-label="Domain mastery heatmap">
+        <button class="collapsible-trigger" type="button"
+                aria-expanded="false" aria-controls="heatmap-grid-wrap"
+                id="heatmap-trigger">
+          <span class="collapsible-titles">
+            <span class="collapsible-title">Domain Mastery Heatmap</span>
+            <span class="collapsible-meta" id="heatmap-meta">Click to view</span>
+          </span>
+          <span class="collapsible-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z"/>
+            </svg>
+          </span>
+        </button>
+        <div class="collapsible-content" id="heatmap-grid-wrap" role="region" aria-labelledby="heatmap-trigger">
+          <div class="collapsible-inner">
+            <div id="heatmap-grid" class="heatmap-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="collapsible concept-section" data-collapsible aria-label="Top missed concepts">
+        <button class="collapsible-trigger" type="button"
+                aria-expanded="false" aria-controls="concept-panel-wrap"
+                id="concept-trigger">
+          <span class="collapsible-titles">
+            <span class="collapsible-title">Top Missed Concepts</span>
+            <span class="collapsible-meta" id="concept-meta">Click to view</span>
+          </span>
+          <span class="collapsible-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M7.41 8.58 12 13.17l4.59-4.59L18 10l-6 6-6-6z"/>
+            </svg>
+          </span>
+        </button>
+        <div class="collapsible-content" id="concept-panel-wrap" role="region" aria-labelledby="concept-trigger">
+          <div class="collapsible-inner">
+            <div id="concept-panel"></div>
+          </div>
+        </div>
       </section>
 
       <section class="mode-row" role="radiogroup" aria-label="Choose a practice mode">
         <button class="mode-btn selected" id="mode-exam" type="button"
                 role="radio" aria-checked="true" onclick="selectMode('exam')">
-          <h4>Timed Mock Exam</h4>
+          <h4><span class="mode-ico" data-icon="timer"></span> Timed Mock Exam</h4>
           <p>50 questions · 2h timer · True simulation</p>
         </button>
         <button class="mode-btn" id="mode-practice" type="button"
                 role="radio" aria-checked="false" onclick="selectMode('practice')">
-          <h4>Practice Mode</h4>
+          <h4><span class="mode-ico" data-icon="book"></span> Practice Mode</h4>
           <p>Untimed · Confidence tracking</p>
-        </button>
-        <button class="mode-btn" id="mode-case" type="button"
-                role="radio" aria-checked="false" onclick="selectMode('case-study')">
-          <h4>Case Study Mode</h4>
-          <p>1 scenario · Linked questions</p>
         </button>
         <button class="mode-btn highlighted" id="mode-adaptive" type="button"
                 onclick="openAdaptivePreview()" aria-label="Preview and start AI Adaptive Sprint">
-          <h4>AI Adaptive Sprint</h4>
+          <h4><span class="mode-ico" data-icon="sparkle"></span> AI Adaptive Sprint</h4>
           <p>10-question targeted micro-sprint</p>
+        </button>
+        <button class="mode-btn" id="mode-flagged" type="button"
+                onclick="startFlaggedSession()" aria-label="Practice flagged questions">
+          <h4><span class="mode-ico" data-icon="flagOutline"></span> Flagged Questions</h4>
+          <p id="flagged-count">Practice questions you've starred</p>
         </button>
       </section>
 
@@ -119,7 +171,19 @@
       </header>
 
       <div class="exam-topbar">
-        <div class="timer" id="timer-display" role="timer" aria-live="off" aria-label="Time remaining">2:00:00</div>
+        <div class="timer-group">
+          <div class="timer" id="timer-display" role="timer" aria-live="off" aria-label="Time remaining">2:00:00</div>
+          <span class="pacing-pill" id="pacing-pill" style="display:none;" aria-live="polite"></span>
+          <button class="review-later-pill" id="review-later-pill" type="button"
+                  onclick="openReviewLater()" aria-haspopup="dialog" aria-controls="review-later-panel"
+                  title="Review questions you've saved for later">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="currentColor">
+              <path d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/>
+            </svg>
+            <span>Review Later</span>
+            <span class="review-count-badge" id="review-count-badge">0</span>
+          </button>
+        </div>
         <div class="progress-wrap">
           <div class="progress-label">
             <span>Progress</span>
@@ -131,10 +195,34 @@
         </div>
       </div>
 
+      <!-- ════════════ REVIEW LATER SLIDE-OUT PANEL ════════════ -->
+      <div id="review-later-overlay" class="review-later-overlay" onclick="closeReviewLater()" aria-hidden="true"></div>
+      <aside id="review-later-panel" class="review-later-panel" role="dialog" aria-modal="false"
+             aria-labelledby="review-later-title" aria-hidden="true">
+        <header class="review-later-header">
+          <div>
+            <h3 id="review-later-title">Saved for Later</h3>
+            <p class="review-later-sub" id="review-later-sub">Flagged questions in this exam</p>
+          </div>
+          <button class="review-later-close" type="button" onclick="closeReviewLater()" aria-label="Close panel">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
+              <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </header>
+        <div class="review-later-list" id="review-later-list" role="list"></div>
+        <footer class="review-later-footer">
+          <span class="review-later-hint">Tap any item to jump there</span>
+        </footer>
+      </aside>
+
       <div id="learning-objective" class="learning-objective-banner" style="display:none;" aria-live="polite"></div>
 
       <article class="question-card" id="q-card" aria-live="polite">
-        <div class="q-meta" id="q-meta"></div>
+        <div class="q-meta-row">
+          <div class="q-meta" id="q-meta"></div>
+          <button class="flag-btn" id="flag-btn" type="button" aria-pressed="false" title="Flag this question for review">Flag</button>
+        </div>
         <div class="case-context" id="case-ctx" style="display:none"></div>
         <div class="q-text" id="q-text"></div>
         <div class="options" id="q-options" role="radiogroup" aria-label="Answer options"></div>
@@ -309,7 +397,11 @@
       function updateIcon() {
         if (!icon) return;
         var t = html.getAttribute('data-theme') || currentTheme();
-        icon.textContent = t === 'dark' ? '☀' : '☾';
+        if (window.icon) {
+          icon.innerHTML = window.icon(t === 'dark' ? 'sun' : 'moon', { size: 16 });
+        } else {
+          icon.textContent = t === 'dark' ? '☀' : '☾';
+        }
         if (btn) btn.setAttribute('aria-label',
           t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
       }
@@ -323,6 +415,15 @@
           updateIcon();
         });
       }
+
+      // Paint inline-SVG icons into any [data-icon] placeholder once features.js is loaded.
+      window.addEventListener('load', function () {
+        if (!window.icon) return;
+        document.querySelectorAll('[data-icon]').forEach(function (el) {
+          const name = el.getAttribute('data-icon');
+          el.innerHTML = window.icon(name, { size: parseInt(el.getAttribute('data-size'), 10) || 18 });
+        });
+      });
 
       // Global keyboard shortcuts for exam (unobtrusive; won't fire in inputs)
       document.addEventListener('keydown', function(e) {
@@ -347,6 +448,7 @@
     })();
   </script>
 
+  <script src="features.js" defer></script>
   <script src="enhancements.js" defer></script>
   <script src="app.js" defer></script>
 </body>

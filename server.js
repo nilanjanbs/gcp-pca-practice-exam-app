@@ -90,13 +90,16 @@ You MAY use Markdown in the "text" and "explanation" fields:
 - GitHub-flavored tables to compare options where relevant.
 - A fenced \`\`\`mermaid block to embed an architecture diagram (flowchart TD or LR) when the scenario genuinely benefits from one.
 
+Each question must also include a "concepts" array of 1–3 short canonical concept tags (e.g. ["Shared VPC", "VPC Service Controls"], ["Cloud SQL HA", "Read replicas"]). Concepts power per-topic mastery tracking, so reuse names consistently.
+
 STRICT OUTPUT: Return ONLY a raw JSON array. Escape newlines inside strings as \\n.
-Format: [{ "id": "ai-adapt-...", "domain": "...", "diff": "hard", "learning_objective": "...", "text": "...", "opts": ["A","B","C","D"], "answer": 0, "explanation": "..." }]`;
+Format: [{ "id": "ai-adapt-...", "domain": "...", "diff": "hard", "concepts": ["..."], "learning_objective": "...", "text": "...", "opts": ["A","B","C","D"], "answer": 0, "explanation": "..." }]`;
     } else {
       finalPrompt = `You are a GCP PCA exam setter. Generate 5 scenario-based multiple-choice questions focusing on varied PCA domains.
 You MAY use Markdown in "text" and "explanation" (bold, code fences, tables, and optional \`\`\`mermaid diagrams).
+Include a "concepts" array of 1–3 short canonical concept tags per question for mastery tracking.
 STRICT OUTPUT: Return ONLY a raw JSON array.
-Format: [{ "id": "ai-std-...", "domain": "...", "diff": "medium", "learning_objective": "General Practice", "text": "...", "opts": ["A","B","C","D"], "answer": 0, "explanation": "..." }]`;
+Format: [{ "id": "ai-std-...", "domain": "...", "diff": "medium", "concepts": ["..."], "learning_objective": "General Practice", "text": "...", "opts": ["A","B","C","D"], "answer": 0, "explanation": "..." }]`;
     }
 
     const responseText = await generateAIResponse(finalPrompt);
@@ -116,11 +119,17 @@ app.post('/api/brief', async (req, res) => {
     if (!topics || !Array.isArray(topics)) throw new Error("Missing topics array");
     
     const prompt = `A GCP PCA student just failed questions on these specific topics: ${topics.join(' | ')}.
-    Write a highly concise, 3-bullet-point "Remediation Brief" explaining the core GCP architectural principles. 
-    Format as clean HTML (use <ul>, <li>, <strong>).`;
+Write a highly concise "Remediation Brief" (3 bullet points) explaining the core GCP architectural principles to fix their misconceptions.
+Output Markdown only:
+- Use **bold** for product names (e.g., **Cloud Spanner**, **VPC Service Controls**).
+- Use \`inline code\` for gcloud flags or resource types.
+- Up to one short \`\`\`yaml or \`\`\`bash code block if it clarifies the concept.
+Do not include preamble or wrapper headings — just the bullets.`;
 
-    const htmlContent = await generateAIResponse(prompt);
-    res.json({ html: htmlContent.replace(/```html|```/g, '') });
+    const mdContent = await generateAIResponse(prompt);
+    // Strip stray code-fence wrapping the whole response, but keep inner fences intact.
+    const cleaned = mdContent.replace(/^```(?:markdown|md|html)?\s*/i, '').replace(/\s*```\s*$/i, '');
+    res.json({ html: cleaned });
   } catch (error) {
     res.status(500).json({ html: "<p>Unable to load remediation brief at this time.</p>" });
   }
@@ -131,10 +140,14 @@ app.post('/api/tutor', async (req, res) => {
   try {
     const { question, correct, wrong } = req.body;
     const prompt = `Student got a GCP PCA question wrong.
-    Q: "${question}"
-    Their choice: "${wrong}"
-    Correct answer: "${correct}"
-    In 3 concise sentences: 1. Why their choice is wrong. 2. Why the right choice is correct. Plain text only.`;
+Q: "${question}"
+Their choice: "${wrong}"
+Correct answer: "${correct}"
+
+Reply in Markdown with two short labelled sections:
+**Why your choice is wrong:** one or two concise sentences.
+**Why the correct answer is right:** one or two concise sentences.
+Use \`inline code\` for product names where it adds clarity. Keep total length under 80 words.`;
 
     const tutorText = await generateAIResponse(prompt);
     res.json({ text: tutorText });

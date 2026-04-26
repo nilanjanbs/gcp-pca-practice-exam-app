@@ -1,0 +1,434 @@
+{
+  "pca:seed-questions": [
+    {
+      "id": "q001",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "A global financial-services platform must process customer transactions with strict ACID semantics across us-central1, europe-west1, and asia-east1. Requirements: SQL interface, externally-consistent reads from any region, RPO of zero, RTO under 60 seconds during a regional outage, and the ability to scale to 100k QPS. Which Google Cloud service satisfies ALL of these requirements?",
+      "opts": [
+        "Cloud SQL for PostgreSQL with HA enabled and cross-region read replicas, with manual failover scripts",
+        "Cloud Spanner with a multi-region instance configuration (nam-eur-asia1) and externally-consistent reads",
+        "AlloyDB for PostgreSQL with cross-region read replicas and Point-in-Time Recovery",
+        "Bigtable with cluster routing across the three regions and app-side consistency checks"
+      ],
+      "answer": 1,
+      "explanation": "Only Cloud Spanner multi-region offers all four properties simultaneously: SQL, external (TrueTime) consistency across regions, synchronous replication for RPO=0, and automatic regional failover within the SLA. Cloud SQL replicas are asynchronous (non-zero RPO) and require manual promotion. AlloyDB cross-region replication is also asynchronous. Bigtable is NoSQL, eventually consistent across clusters, and cannot satisfy ACID transactions.\n\n🔍 Targeted Search: 'Cloud Spanner multi-region nam-eur-asia1 RPO zero', 'Cloud Spanner external consistency TrueTime'."
+    },
+    {
+      "id": "q002",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your team is building a stateless REST API that experiences traffic spikes from 50 RPS to 5,000 RPS within seconds during product launches. The team has zero ops capacity and must minimize cost during quiet periods. The service is packaged as a Docker container. Which compute platform best fits these constraints?",
+      "opts": [
+        "GKE Standard cluster with Cluster Autoscaler and HorizontalPodAutoscaler",
+        "Cloud Run (fully managed) with min-instances=0 and max-instances=1000",
+        "App Engine Flexible environment with auto-scaling enabled",
+        "Compute Engine managed instance group with HTTP load balancing and predictive autoscaling"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Run scales to zero (no cost when idle) and to thousands of instances in seconds — ideal for stateless containers with bursty traffic and zero ops. GKE Standard requires node management and pre-warming. App Engine Flex VMs take minutes to scale and never go to zero. Compute Engine MIGs scale slowly relative to a 50→5,000 RPS spike and incur baseline cost.\n\n🔍 Targeted Search: 'Cloud Run vs GKE Autopilot scale-to-zero', 'Cloud Run concurrency tuning autoscaling'."
+    },
+    {
+      "id": "q003",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "You are designing a data platform that ingests two streams: (1) clickstream events at 200k events/sec from web apps and (2) hourly batch CSV files dropped into Cloud Storage by partner systems. Both streams must land in the same BigQuery dataset for unified analytics, with end-to-end latency under 60 seconds for the streaming path. Which architecture meets these requirements with the LOWEST operational overhead?",
+      "opts": [
+        "Web → Pub/Sub → Dataflow streaming job → BigQuery; GCS → Cloud Storage notification → Pub/Sub → same Dataflow job",
+        "Web → Pub/Sub → Cloud Functions → BigQuery; GCS → Cloud Composer DAG → BigQuery",
+        "Web → Pub/Sub Lite → Dataproc Spark Streaming → BigQuery; GCS → Spark batch job → BigQuery",
+        "Web → Cloud Run ingest → BigQuery streaming inserts; GCS → BigQuery Data Transfer Service hourly load"
+      ],
+      "answer": 0,
+      "explanation": "A unified Dataflow pipeline (using Apache Beam's unified model) handles streaming from Pub/Sub and 'streaming' mini-batches from GCS via notifications, with autoscaling and one operational surface. Cloud Functions has limits at 200k events/sec scale and adds complexity by splitting batch to Composer. Dataproc Spark Streaming requires cluster ops. Cloud Run + BigQuery streaming inserts has higher cost at scale and Data Transfer Service has minimum hourly granularity but mixes two operational systems.\n\n🔍 Targeted Search: 'Dataflow unified batch streaming Beam', 'Pub/Sub Cloud Storage notifications event-driven ingest'."
+    },
+    {
+      "id": "q004",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Your company is migrating a monolith on Compute Engine to microservices on GKE using the strangler-fig pattern. During the migration, both stacks must serve production traffic. Requirement: route `/api/v2/*` to GKE backends, all other paths to the existing Compute Engine instances; SSL termination at the edge; no DNS changes. What should you implement?",
+      "opts": [
+        "Configure Cloud DNS weighted routing to split traffic between GCE and GKE",
+        "Deploy a global external Application Load Balancer with a URL map: /api/v2/* → GKE NEG backend service, default → Compute Engine backend service",
+        "Run an NGINX ingress on GKE that proxies legacy paths back to the Compute Engine instances",
+        "Place Cloud Endpoints in front and configure path-based routing rules in OpenAPI"
+      ],
+      "answer": 1,
+      "explanation": "A global external Application Load Balancer (HTTPS LB) supports URL maps with path-based routing, terminates SSL, and supports both GCE backend services and GKE Network Endpoint Groups (NEGs) — the textbook strangler-fig solution. Cloud DNS routing is at DNS-level, not URL-path. NGINX-on-GKE proxying back to GCE adds a hop and ties the legacy stack's lifecycle to GKE. Cloud Endpoints is API management, not a general path router.\n\n🔍 Targeted Search: 'External Application Load Balancer URL map path matcher NEG', 'GKE standalone NEG container-native load balancing'."
+    },
+    {
+      "id": "q005",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "Your organization needs private connectivity from on-prem to Google Cloud with: 10 Gbps sustained throughput, sub-5ms additional latency, 99.99% availability SLA on the connection itself, and the ability to access Google APIs (e.g., BigQuery) over private IP. Which design meets ALL of these requirements?",
+      "opts": [
+        "Two HA VPN gateways with active/active tunnels and Cloud Router BGP",
+        "Two Dedicated Interconnect connections terminated at two different colocation facilities, with VLAN attachments and Private Google Access for on-prem hosts",
+        "A single Partner Interconnect attachment at 10 Gbps with Cloud Router and Private Service Connect",
+        "Cloud VPN with multiple tunnels aggregated and route-based forwarding to Google APIs"
+      ],
+      "answer": 1,
+      "explanation": "Dedicated Interconnect provides 10 Gbps physical links with a 99.99% SLA only when deployed redundantly across two metro/edge locations. Private Google Access for on-prem (via restricted/private VIPs and DNS) lets on-prem traffic reach Google APIs over Interconnect privately. HA VPN tops out around 3 Gbps per tunnel and has no comparable latency guarantee. A single Partner Interconnect link does not meet 99.99%. Cloud VPN cannot deliver 10 Gbps sustained throughput.\n\n🔍 Targeted Search: 'Dedicated Interconnect 99.99% SLA topology', 'Private Google Access for on-premises hosts'."
+    },
+    {
+      "id": "q006",
+      "domain": "Designing & Planning",
+      "diff": "medium",
+      "text": "Files arrive in a Cloud Storage bucket from external partners. For every new object, you must run a transformation, write the result to BigQuery, and notify a Slack channel — all serverlessly. Which event-driven architecture is recommended?",
+      "opts": [
+        "A Cloud Composer DAG that polls the bucket every 5 minutes and orchestrates the steps",
+        "Cloud Storage object notifications → Pub/Sub topic → Eventarc-triggered Cloud Run service that transforms, writes to BigQuery, and posts to Slack",
+        "A Cloud Function (1st gen) directly attached to a GCS finalize trigger that does everything in-process",
+        "Cloud Scheduler hourly job → Workflows that lists new files in GCS and processes them"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Storage → Pub/Sub → Eventarc → Cloud Run is the recommended decoupled event-driven pattern: GCS notifications publish to Pub/Sub, Eventarc routes to Cloud Run with retries and dead-letter queues. Composer polling adds latency and ops cost. A 1st-gen Cloud Function works but lacks Pub/Sub buffering, dead-letter queue, and concurrency control. Cloud Scheduler hourly polling is not event-driven.\n\n🔍 Targeted Search: 'Eventarc Cloud Run Cloud Storage trigger', 'Pub/Sub dead-letter queue Cloud Run subscriber'."
+    },
+    {
+      "id": "q007",
+      "domain": "Designing & Planning",
+      "diff": "hard",
+      "text": "An e-commerce platform runs across three GKE clusters in us-central1, europe-west1, and asia-southeast1. Microservices must communicate cross-cluster with mutual TLS, observable east-west traffic, traffic splitting for canary releases, and a single management plane. Which solution best meets these requirements?",
+      "opts": [
+        "Self-managed Istio installed identically in each cluster with manual federation",
+        "Anthos Service Mesh in fleet mode with multi-cluster mesh and managed control plane",
+        "Cloud Service Mesh on GCE-based Traffic Director only, with no in-cluster sidecars",
+        "Kubernetes NetworkPolicies plus a global external Application Load Balancer for inter-service traffic"
+      ],
+      "answer": 1,
+      "explanation": "Anthos Service Mesh (now Cloud Service Mesh) in fleet mode provides a managed, multi-cluster Istio control plane with mTLS, traffic policy, and unified telemetry across regions — without DIY Istio federation. Self-managed Istio is operationally heavy. Traffic Director without sidecars cannot deliver mTLS between pods. NetworkPolicies are L3/L4 only and don't provide mTLS, splitting, or observability.\n\n🔍 Targeted Search: 'Cloud Service Mesh multi-cluster fleet', 'Anthos Service Mesh managed control plane mTLS'."
+    },
+    {
+      "id": "q008",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "Three platform teams collaborate on shared Terraform configurations and need to run plans/applies safely. Requirements: state must be remote, encrypted, versioned; concurrent applies must be prevented to avoid corruption; CI/CD pipelines and individual engineers must both be able to run Terraform. Which backend configuration is recommended on Google Cloud?",
+      "opts": [
+        "Use the local backend and commit state files to a private Git repository; rely on PR review to serialize applies",
+        "Use the Google Cloud Storage backend with Object Versioning enabled; rely on Terraform's native state locking via GCS",
+        "Run Terraform Cloud agents inside the VPC and store state externally in Terraform Cloud only",
+        "Use a Cloud SQL backend through a community provider; manage locking via PostgreSQL advisory locks"
+      ],
+      "answer": 1,
+      "explanation": "The supported best practice is the GCS backend: state is encrypted at rest, Object Versioning gives history/rollback, and the GCS backend implements native state locking via GCS object generation conditions. Local state in Git is unsafe (race conditions, secrets in repo). Terraform Cloud only is valid but the question asks the recommended GCP-native pattern. There is no first-party Cloud SQL backend.\n\n🔍 Targeted Search: 'Terraform GCS backend state locking', 'Terraform remote state best practices Google Cloud'."
+    },
+    {
+      "id": "q009",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "text": "Your team must run a workload on GKE that requires a privileged DaemonSet to install a kernel module on every node and tune host-level sysctls. The team also needs node-level GPU drivers managed by them. Which GKE mode is appropriate, and why?",
+      "opts": [
+        "GKE Autopilot — the workload can be allowed via Autopilot's privileged workload allowlist",
+        "GKE Standard — Autopilot disallows privileged DaemonSets that modify host state and restricts host-level sysctls",
+        "GKE Autopilot with a Workload Identity binding to a privileged service account",
+        "GKE Standard with Shielded GKE Nodes; this enables the privileged DaemonSet automatically"
+      ],
+      "answer": 1,
+      "explanation": "Autopilot enforces a node management contract: privileged containers, hostNetwork/hostPID, host-modifying sysctls, and custom kernel modules are restricted. Use GKE Standard when you need that level of node control. Workload Identity is an authentication feature unrelated to host privileges. Shielded Nodes hardens the boot chain but does not lift Autopilot's restrictions or enable privileged DaemonSets.\n\n🔍 Targeted Search: 'GKE Autopilot allowed and restricted workloads', 'GKE Standard vs Autopilot kernel modules DaemonSet'."
+    },
+    {
+      "id": "q010",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "Cloud Build pipelines must access an internal Artifactory repository hosted on-prem, reachable only over a Cloud Interconnect through a Shared VPC host project. Outbound public egress from build steps is prohibited by policy. Which configuration meets these requirements?",
+      "opts": [
+        "Cloud Build default pool with an HTTP proxy on a Compute Engine NAT instance routing to Interconnect",
+        "Cloud Build private worker pool peered to the Shared VPC host network so build VMs reach on-prem via Interconnect with no public egress",
+        "Cloud Build default pool plus a Cloud VPN tunnel from each build worker to on-prem",
+        "Cloud Build default pool with Serverless VPC Access connector targeting the Shared VPC"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Build private pools run on Google-managed VMs that peer with your VPC, allowing private connectivity to on-prem via your existing Interconnect/VPN — without public egress. The default pool runs in Google's tenant network and cannot reach private VPC resources, even via Serverless VPC Access (which is for Cloud Run/Functions/App Engine, not Cloud Build). NAT/VPN per worker is not how Cloud Build is networked.\n\n🔍 Targeted Search: 'Cloud Build private pool VPC peering', 'Cloud Build access private worker pool on-prem Interconnect'."
+    },
+    {
+      "id": "q011",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "text": "An enterprise runs 50 GKE clusters across regions, each owned by a different team. Platform engineering must enforce a baseline of namespaces, RBAC roles, network policies, and a Pod Security Admission profile from a single Git repo, with drift detection. Which solution best meets these requirements?",
+      "opts": [
+        "Argo CD installed individually on each cluster, each pointing at the same Git branch",
+        "Anthos Config Management (Config Sync + Policy Controller) configured at the fleet level for all clusters",
+        "A central Cloud Build pipeline that runs `kubectl apply` against all 50 clusters on every push",
+        "Helm charts published to Artifact Registry and pulled on cron by a per-cluster CronJob"
+      ],
+      "answer": 1,
+      "explanation": "Anthos Config Management (Config Sync + Policy Controller) is purpose-built for fleet-wide GitOps with drift detection, hierarchical policies, and centralized observability. Argo CD per cluster works but lacks fleet-level policy enforcement, drift dashboards, and namespace inheritance. Centralized `kubectl apply` is brittle and offers no continuous reconciliation. Helm via cron has no policy enforcement or drift detection.\n\n🔍 Targeted Search: 'Anthos Config Management Config Sync Policy Controller', 'GKE fleet GitOps drift detection'."
+    },
+    {
+      "id": "q012",
+      "domain": "Managing & Provisioning",
+      "diff": "medium",
+      "text": "Your enterprise wants to forbid public IPs on all Compute Engine VMs across the organization, except inside one dedicated `dmz-net` project where ingress proxies must have public IPs. How should you enforce this with the least operational overhead?",
+      "opts": [
+        "Apply a custom organization policy that denies external IPs at the org level, and override it with an exception at the dmz-net project node",
+        "Configure a VPC firewall rule at the org level blocking traffic to public IPs",
+        "Use IAM Conditions on every project that disable the compute.instances.create permission for users requesting public IPs",
+        "Schedule a Cloud Function that scans projects nightly and deletes any VM with a public IP outside the dmz-net project"
+      ],
+      "answer": 0,
+      "explanation": "The constraint `constraints/compute.vmExternalIpAccess` (and related) is an Organization Policy that supports inheritance and per-resource (folder/project) overrides — exactly the use case here. Firewall rules don't prevent attachment of public IPs. IAM Conditions are difficult to scale to this fine-grained outcome. A nightly cleanup Function is reactive and racy; the question asks for prevention.\n\n🔍 Targeted Search: 'org policy compute.vmExternalIpAccess', 'organization policy hierarchy override project'."
+    },
+    {
+      "id": "q013",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "A regulated firm stores PHI in BigQuery and Cloud Storage in a single project. Auditors require that data CANNOT be exported, copied, or queried into projects outside a defined boundary, even by users with project-level IAM roles. The control must apply to API-level egress, not just network egress. Which control should you implement?",
+      "opts": [
+        "Tighten IAM by removing BigQuery and Storage roles from all users and granting them via short-lived just-in-time access",
+        "Create a VPC Service Controls service perimeter around the project that includes BigQuery and Cloud Storage, with explicit ingress/egress rules",
+        "Apply Cloud DLP de-identification on every export and rely on inspection findings to block sensitive data",
+        "Attach an organization policy that disallows the storage.objects.get and bigquery.tables.export permissions"
+      ],
+      "answer": 1,
+      "explanation": "VPC Service Controls (VPC SC) creates an API-level perimeter that prevents data exfiltration out of protected services even by users with valid IAM, and supports access levels and ingress/egress rules. IAM restrictions don't stop a user with bigquery.dataViewer from exporting to a personal project. DLP is detective, not preventive. There is no org policy that blanket-denies these specific permissions in a useful way.\n\n🔍 Targeted Search: 'VPC Service Controls service perimeter BigQuery Cloud Storage', 'VPC SC ingress egress rules access levels'."
+    },
+    {
+      "id": "q014",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "A GitHub Actions workflow needs to deploy to Google Cloud. The security team forbids long-lived service-account JSON keys checked into secret stores. Which authentication mechanism should you use?",
+      "opts": [
+        "Generate a service-account JSON key, encrypt it with KMS, and store the ciphertext in GitHub Secrets",
+        "Configure Workload Identity Federation between Google Cloud and GitHub's OIDC provider, mapping repo claims to a service account",
+        "Use the gcloud CLI inside the workflow with a personal user OAuth token stored as a secret",
+        "Issue a short-lived service-account key via the IAM Credentials API on each run and discard after"
+      ],
+      "answer": 1,
+      "explanation": "Workload Identity Federation lets GitHub Actions exchange its OIDC token for short-lived Google credentials with no JSON keys, no rotation, and identity claims (repo, branch) bound to a service account via attribute conditions. Encrypting a JSON key still results in a long-lived key. Personal OAuth tokens are user credentials, not workflow credentials. Generating SA keys via API on each run still produces JSON keys that must be handled securely.\n\n🔍 Targeted Search: 'Workload Identity Federation GitHub Actions OIDC', 'WIF attribute condition repository'."
+    },
+    {
+      "id": "q015",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "A healthcare company stores PHI in BigQuery. Compliance requires customer-managed keys for encryption at rest, with keys held in the same region as the data, plus the ability to revoke access by deleting the key version while retaining BigQuery audit logs. Which configuration meets all three requirements?",
+      "opts": [
+        "Default Google-managed encryption with Cloud Logging audit trail",
+        "Application-level AES-256 encryption with the data key stored in Secret Manager",
+        "BigQuery dataset configured with CMEK referencing a Cloud KMS key in the same region as the dataset; rotate or destroy key versions to revoke",
+        "Cloud HSM-backed key referenced as a CMEK on Cloud Storage; export BigQuery to GCS for compliance"
+      ],
+      "answer": 2,
+      "explanation": "BigQuery supports CMEK at the dataset/table level using a regional Cloud KMS key (must be co-located with the dataset). Destroying a key version revokes decryption capability while audit logs persist independently. Default encryption doesn't satisfy the customer-managed requirement. App-level encryption breaks BigQuery's native query and key-residency guarantees. Cloud HSM is fine but the option pivots to Cloud Storage and exports, missing the in-place BigQuery requirement.\n\n🔍 Targeted Search: 'BigQuery CMEK regional key location', 'Cloud KMS key version destroy revoke decryption'."
+    },
+    {
+      "id": "q016",
+      "domain": "Security & Compliance",
+      "diff": "medium",
+      "text": "A new audit found a Cloud Storage bucket made public by an engineer. Leadership wants to make it impossible to expose buckets publicly across the organization, regardless of project IAM settings. Which control is the right enforcement mechanism?",
+      "opts": [
+        "An organization policy enforcing `constraints/storage.publicAccessPrevention` set to `enforced` at the org node",
+        "A Cloud Function on a Cloud Audit Log sink that removes `allUsers` and `allAuthenticatedUsers` ACLs whenever set",
+        "Bucket-level IAM Conditions denying allUsers and allAuthenticatedUsers on every bucket",
+        "A VPC firewall rule blocking egress to googleapis.com storage endpoints"
+      ],
+      "answer": 0,
+      "explanation": "Public Access Prevention (`constraints/storage.publicAccessPrevention`) is an Organization Policy designed exactly for this: when enforced at the org, no project below can grant `allUsers`/`allAuthenticatedUsers` on storage objects or buckets. Reactive Cloud Functions remediate after exposure (window of risk). Bucket IAM Conditions don't scale and can be removed by a project owner. Firewall rules cannot prevent IAM-level public access.\n\n🔍 Targeted Search: 'storage.publicAccessPrevention organization policy', 'enforce public access prevention bucket'."
+    },
+    {
+      "id": "q017",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "Remote employees need SSH access to legacy on-prem applications and VMs in a private VPC, without distributing SSH keys, without a VPN client, and without exposing the apps publicly. The solution must integrate with the company's Cloud Identity SSO and provide per-user audit logs. Which approach meets these requirements?",
+      "opts": [
+        "Public bastion host in a DMZ subnet with OS Login enabled and 2FA",
+        "Identity-Aware Proxy (IAP) TCP forwarding for the GCE VMs and IAP for on-prem (via the IAP Connector) for the legacy apps, gated by IAM and Cloud Identity SSO",
+        "Cloud VPN with certificate-based authentication issued from a private CA",
+        "A self-hosted reverse SSH tunnel from each workstation to a Compute Engine VM"
+      ],
+      "answer": 1,
+      "explanation": "IAP TCP forwarding terminates the user session at Google's edge, authenticates with Cloud Identity SSO, and forwards TCP/SSH to private VMs without a VPN — no public exposure, full per-user audit. The IAP Connector extends the same control plane to on-prem applications. A bastion still requires a public IP and key distribution. VPN gives broad network access (worse blast radius). Self-hosted reverse tunnels lack centralized identity and audit.\n\n🔍 Targeted Search: 'IAP TCP forwarding SSH Compute Engine', 'Identity-Aware Proxy on-prem connector'."
+    },
+    {
+      "id": "q018",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A BigQuery workload has highly variable query volume — quiet most of the day, then 2-hour spikes 3x per week. Finance wants predictable cost; engineering wants no slot-starvation during spikes. Which slot-management strategy fits best?",
+      "opts": [
+        "On-demand pricing for all queries, accepting variable cost",
+        "Edition (Enterprise) reservation with autoscaling slots and idle slot sharing across reservations",
+        "A 3-year capacity commitment sized for peak, to maximize discount",
+        "Flex slots purchased manually 30 minutes before each expected spike"
+      ],
+      "answer": 1,
+      "explanation": "BigQuery Editions provide reservations with autoscaling slots: you set baseline + max, autoscaling fills the spikes within your max, and idle-slot sharing redistributes unused capacity across reservations — best blend of predictability and burst capacity. On-demand removes predictability. A 3-year commit at peak overspends during quiet periods. Manual flex purchasing is brittle and operationally noisy.\n\n🔍 Targeted Search: 'BigQuery editions reservations autoscaling slots', 'BigQuery idle slot sharing'."
+    },
+    {
+      "id": "q019",
+      "domain": "Analyzing & Optimizing",
+      "diff": "medium",
+      "text": "Your application produces 5 TB of log files per month into Cloud Storage. Access pattern: heavily queried for the first 30 days, occasional access for 90 days after, retained for 7 years for compliance, never deleted. Which lifecycle configuration minimizes cost?",
+      "opts": [
+        "Keep all data in Standard storage and rely on Object Lifecycle Management to delete after 7 years",
+        "Standard for 30 days → Nearline at 30 days → Coldline at 120 days → Archive at 365 days, no deletion",
+        "Multi-region Standard for the entire 7 years to maximize availability",
+        "Archive immediately on upload to minimize ongoing storage cost"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Storage classes are priced for access pattern and minimum-storage durations. The tiered transition (Standard → Nearline → Coldline → Archive) matches the described decay in access frequency. Multi-region Standard is overpriced for cold data. Archive immediately incurs a 365-day minimum-storage commitment penalty if you read in the first 30 days.\n\n🔍 Targeted Search: 'Cloud Storage object lifecycle management transitions', 'Nearline Coldline Archive minimum storage duration'."
+    },
+    {
+      "id": "q020",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A research team trains ML models for 12-24 hours on GPU-equipped GKE node pools. Jobs are checkpointed every 15 minutes and can resume after interruption. The team has a strict cost target. Which combination minimizes cost while completing jobs?",
+      "opts": [
+        "On-demand GPU VMs in a standard GKE node pool with cluster autoscaler",
+        "Spot VMs in a separate GKE node pool with taints/tolerations and PodDisruptionBudgets to drain gracefully into checkpoints",
+        "Cloud TPU v5e pods on demand for all jobs regardless of model size",
+        "Dedicated long-running Compute Engine VMs sized for peak GPU usage and committed for 1 year"
+      ],
+      "answer": 1,
+      "explanation": "Spot VMs offer up to ~91% discount vs on-demand. Because the workload is checkpointed and tolerates interruption, Spot is ideal; isolating Spot in a tainted node pool prevents critical workloads from landing there, and PodDisruptionBudgets/preemption notices give graceful drain. On-demand and 1-year commits don't optimize cost. TPUs are not always GPU-replacement and depend on model architecture; selecting TPU regardless of model size is wrong.\n\n🔍 Targeted Search: 'GKE Spot VM node pool taints tolerations', 'Spot VMs preemption notice graceful shutdown'."
+    },
+    {
+      "id": "q021",
+      "domain": "Analyzing & Optimizing",
+      "diff": "medium",
+      "text": "Finance has flagged Compute Engine spend as ~30% over-provisioned. The platform team wants a programmatic, ongoing way to surface VMs that can be safely downsized, with reasoning and risk indicators. Which Google Cloud capability should they integrate?",
+      "opts": [
+        "Cloud Monitoring custom dashboards with CPU/memory metrics and manual review",
+        "Active Assist Recommender — specifically VM right-sizing recommendations — consumed via the Recommender API",
+        "BigQuery Information Schema queries on usage tables joined to billing exports",
+        "Cloud Asset Inventory exports to BigQuery, with custom SQL heuristics"
+      ],
+      "answer": 1,
+      "explanation": "Active Assist's VM right-sizing recommender ingests 8 days of utilization, applies Google heuristics (P95 with safety buffers), and outputs concrete machine-type changes plus estimated savings — accessible via the Recommender API or Console. Manual dashboards or DIY SQL heuristics duplicate this. Asset Inventory describes shape, not utilization.\n\n🔍 Targeted Search: 'Active Assist VM right-sizing Recommender', 'Recommender API google.compute.instance.MachineTypeRecommender'."
+    },
+    {
+      "id": "q022",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A 12 TB BigQuery table `events` is queried hundreds of times per day, mostly with filters on `event_date` (a DATE column) and `user_id` (STRING). Queries scan the entire table and run for minutes. Which optimization gives the biggest, most durable improvement?",
+      "opts": [
+        "Partition the table by `event_date` and cluster it by `user_id`",
+        "Create a materialized view summing events per `user_id` per `event_date`",
+        "Migrate the table to BigQuery BI Engine and let it cache hot rows",
+        "Add an integer surrogate key and create a sort order on `event_date` during INSERTs"
+      ],
+      "answer": 0,
+      "explanation": "Partitioning by `event_date` prunes scans to only the relevant partitions; clustering by `user_id` further co-locates rows within partitions, reducing bytes scanned for filters/joins on user_id. Together they directly target the dominant query shape. A materialized view helps a single aggregation but not arbitrary queries. BI Engine helps interactive BI, not all programmatic workloads. INSERT sort-order is not a real BigQuery primitive at the storage layer.\n\n🔍 Targeted Search: 'BigQuery partitioning clustering best practices', 'BigQuery clustered table reduce bytes scanned'."
+    },
+    {
+      "id": "q023",
+      "domain": "Managing Implementation",
+      "diff": "medium",
+      "text": "A platform team wants to standardize blue-green and canary deployments to multiple GKE clusters across environments (dev → staging → prod). Requirements: declarative pipeline definition in Git, approval gates per environment, automated rollback on SLO breach. Which Google Cloud service is purpose-built for this?",
+      "opts": [
+        "Cloud Build alone, using a single trigger and conditional steps",
+        "Cloud Deploy with delivery pipelines, targets per environment, and automated rollback policies",
+        "Manual `kubectl apply` from a shared workstation gated by Slack approvals",
+        "Argo Rollouts installed independently per cluster"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Deploy is GCP's managed continuous-delivery service with declarative delivery pipelines, multi-target promotion, approval gates, and automated rollback hooks integrated with Cloud Monitoring. Cloud Build is a CI tool — it can drive deploys but doesn't model promotion/rollback first-class. Manual kubectl is not standardization. Argo Rollouts is excellent inside a cluster but doesn't model multi-environment promotion at the GCP service layer.\n\n🔍 Targeted Search: 'Google Cloud Deploy delivery pipelines targets', 'Cloud Deploy automated rollback canary'."
+    },
+    {
+      "id": "q024",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "text": "You must migrate a 4 TB on-prem Oracle 19c database to a managed PostgreSQL service on Google Cloud with continuous replication and minimal downtime cutover. The schema includes triggers, packages, and PL/SQL business logic that must be converted. Which Google Cloud service should you use as the primary tool?",
+      "opts": [
+        "Storage Transfer Service for Oracle dumps",
+        "Database Migration Service (DMS) — heterogeneous Oracle → Cloud SQL/AlloyDB for PostgreSQL with continuous replication and the schema-conversion workbench",
+        "Datastream into BigQuery, then bulk-load into PostgreSQL nightly",
+        "A custom Apache Beam (Dataflow) pipeline reading from Oracle CDC and writing to PostgreSQL"
+      ],
+      "answer": 1,
+      "explanation": "Database Migration Service supports heterogeneous Oracle → PostgreSQL migrations with built-in schema conversion (including PL/SQL and packages where supported) plus continuous replication for near-zero-downtime cutover. Storage Transfer is for files. Datastream replicates change data into BigQuery/GCS, not directly into Postgres as the target system. A custom Beam pipeline is possible but reinvents what DMS provides as a managed service.\n\n🔍 Targeted Search: 'Database Migration Service Oracle to Cloud SQL PostgreSQL', 'DMS heterogeneous schema conversion PL/SQL'."
+    },
+    {
+      "id": "q025",
+      "domain": "Managing Implementation",
+      "diff": "medium",
+      "text": "Your container supply chain must enforce: only images built by an internal Cloud Build pipeline can be deployed to production GKE; images must pass vulnerability scanning; provenance metadata must be auditable. Which combination of Google Cloud services accomplishes this?",
+      "opts": [
+        "Artifact Registry with vulnerability scanning + Binary Authorization with attestations from Cloud Build, enforced by GKE admission policy",
+        "Container Registry (legacy) + Cloud KMS-signed image manifests + a custom mutating webhook on GKE",
+        "Artifact Registry + a Cloud Function that scans images and emails the team on findings",
+        "Docker Hub Pro + Snyk scanning + manual approval before kubectl apply"
+      ],
+      "answer": 0,
+      "explanation": "The recommended supply-chain pattern: Artifact Registry stores images with built-in vulnerability scanning; Cloud Build issues attestations after the build/scan; Binary Authorization policies on GKE clusters require those attestations before admission, with audit logs end-to-end. Legacy GCR is being deprecated. A Cloud Function that emails on findings is detective, not preventive. External registries+manual approval lack enforcement at the cluster.\n\n🔍 Targeted Search: 'Binary Authorization Cloud Build attestations GKE', 'Artifact Registry vulnerability scanning Container Analysis'."
+    },
+    {
+      "id": "q026",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "text": "A stateful application runs on GKE with PersistentVolumeClaims backed by regional persistent disks. Business requires regional disaster recovery with RTO ≤ 1 hour and RPO ≤ 15 minutes. Which design meets these requirements with the least custom code?",
+      "opts": [
+        "Use Backup for GKE to schedule application-consistent backups every 15 minutes, replicated cross-region, and restore the workload+volumes into a standby cluster on DR",
+        "Use Velero with GCS storage; on DR, manually run velero restore against a standby cluster",
+        "Run a multi-region GKE cluster and assume regional persistent disks replicate automatically across regions",
+        "Migrate the application to Cloud SQL HA for the data tier and ignore the PVCs"
+      ],
+      "answer": 0,
+      "explanation": "Backup for GKE is the managed Google service for stateful GKE backup/restore: it captures Kubernetes API objects + PVC volumes consistently, supports schedules, cross-region replicas, and restore to another cluster — meeting RTO/RPO with the least DIY code. Velero is valid but operationally heavier and not Google-managed. Regional persistent disks replicate within a region, not across regions. Migrating off PVCs to Cloud SQL is a major refactor not implied by the question.\n\n🔍 Targeted Search: 'Backup for GKE cross-region disaster recovery', 'GKE PersistentVolume backup restore'."
+    },
+    {
+      "id": "q027",
+      "domain": "Reliability & Operations",
+      "diff": "medium",
+      "text": "An SRE team wants to define a 99.9% availability SLO for their checkout API based on the ratio of successful HTTP responses, with a 30-day rolling window and an alert when the error budget is being burned faster than 10× over a 1-hour window. Which Google Cloud product directly supports this?",
+      "opts": [
+        "Cloud Monitoring SLOs with request-based SLI on a service, plus a burn-rate alerting policy",
+        "Cloud Logging exclusion filters and ad-hoc dashboards",
+        "Cloud Trace span analytics with custom export to BigQuery",
+        "Uptime checks alone, with alerting on consecutive failures"
+      ],
+      "answer": 0,
+      "explanation": "Cloud Monitoring has first-class SLO objects, with request-based and windows-based SLIs, rolling-window evaluation, and built-in burn-rate alert policies (e.g., 10× over 1h) — exactly the workflow described. Logging exclusions and trace analytics support investigation, not SLO accounting. Uptime checks alert on synthetic probes, not on actual traffic-derived SLI ratios.\n\n🔍 Targeted Search: 'Cloud Monitoring SLO burn rate alerting', 'Google SRE workbook SLO error budget'."
+    },
+    {
+      "id": "q028",
+      "domain": "Reliability & Operations",
+      "diff": "hard",
+      "text": "A Cloud SQL for PostgreSQL primary in us-central1 must survive a complete regional outage with RTO ≤ 5 minutes and RPO ≤ 1 minute. Which architecture meets these targets while remaining a managed service?",
+      "opts": [
+        "Cloud SQL HA configuration alone (regional HA with synchronous standby)",
+        "Cloud SQL HA + a cross-region read replica that can be promoted to primary on regional failover, combined with point-in-time recovery enabled",
+        "Cloud SQL standalone with daily exports to GCS in another region",
+        "Self-managed PostgreSQL with Patroni clusters in two regions"
+      ],
+      "answer": 1,
+      "explanation": "Cloud SQL HA gives zonal redundancy within a region only; a regional outage takes both primary and standby down. Adding a cross-region read replica allows promotion on failover (manual or scripted) for low-RTO regional DR; PITR allows recovery to a precise point if replication lag becomes problematic. Daily exports yield much higher RPO. Self-managed Patroni is no longer 'managed service'.\n\n🔍 Targeted Search: 'Cloud SQL cross-region read replica disaster recovery promote', 'Cloud SQL HA regional failure DR'."
+    },
+    {
+      "id": "q029",
+      "domain": "Reliability & Operations",
+      "diff": "medium",
+      "text": "A fintech pipeline reads transactions from Pub/Sub into Dataflow, deduplicates, and writes to BigQuery. After an incident with double-charged customers, the team needs end-to-end exactly-once processing with the least amount of custom plumbing. Which design is correct?",
+      "opts": [
+        "Enable Pub/Sub exactly-once delivery on the subscription and use Dataflow's idempotent BigQuery sink with insertId-based deduplication",
+        "Use Pub/Sub Lite with at-least-once delivery and rely on BigQuery streaming insert deduplication only",
+        "Build a custom Bloom filter in a Cloud Function to dedupe before publishing",
+        "Switch to Dataflow batch jobs every 5 minutes to avoid streaming semantics altogether"
+      ],
+      "answer": 0,
+      "explanation": "Pub/Sub now supports exactly-once delivery on a subscription, and the Dataflow runner integrates with this for end-to-end exactly-once when paired with idempotent sinks (BigQuery insertIds, etc.). Pub/Sub Lite has different semantics and lower features. A Bloom filter approximates dedup and is wrong for financial workloads. Switching to micro-batches changes the SLA and isn't necessary.\n\n🔍 Targeted Search: 'Pub/Sub exactly-once delivery subscription', 'Dataflow exactly-once BigQuery insertId'."
+    },
+    {
+      "id": "q030",
+      "domain": "Reliability & Operations",
+      "diff": "hard",
+      "text": "A static-asset workload serves 5 PB/month globally. You need: low latency worldwide, automatic failover between two GCS buckets in different regions if one region degrades, custom domain on HTTPS, and DDoS protection. Which architecture is correct?",
+      "opts": [
+        "A single regional GCS bucket with public access and Cloud CDN at the edge",
+        "Two regional GCS buckets fronted by a global external Application Load Balancer with backend buckets in a backend service, Cloud CDN enabled, Cloud Armor for DDoS, and origin failover via health checks",
+        "Firebase Hosting with two regional backends and manual DNS failover",
+        "A single multi-region bucket and rely on Google's internal failover; serve via direct GCS public URLs"
+      ],
+      "answer": 1,
+      "explanation": "The HTTP(S) external Application Load Balancer can front multiple GCS backend buckets in a backend service, do CDN at the edge, terminate the custom domain TLS, attach Cloud Armor for DDoS/WAF, and execute origin failover when a backend's health declines. Direct public bucket URLs lack a global anycast frontend, custom domain TLS via the LB, Cloud Armor, and active failover. Firebase Hosting + manual DNS isn't automatic. A single regional bucket is a single failure domain.\n\n🔍 Targeted Search: 'Cloud CDN backend bucket origin failover', 'External Application Load Balancer Cloud Armor backend bucket'."
+    }
+  ],
+  "pca:domain-mastery": {},
+  "pca:stats": {
+    "sessions": 0,
+    "bestScore": null
+  },
+  "pca:last-session": null,
+  "pca:ai-questions": [],
+  "pca:spaced-repetition": [],
+  "pca:history": [],
+  "pca:onboarded": true
+}

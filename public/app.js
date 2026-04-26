@@ -29,7 +29,11 @@ async function dbSet(key, val) {
 }
 
 // ── Dashboard Init ──
-window.addEventListener('load', async () => { await renderDashboard(); });
+window.addEventListener('load', async () => {
+  if (window.loadFlags) await window.loadFlags();
+  await renderDashboard();
+  if (window.maybeShowOnboarding) await window.maybeShowOnboarding();
+});
 
 async function renderDashboard() {
   const stats = await dbGet('pca:stats') || { sessions: 0, bestScore: null };
@@ -40,22 +44,72 @@ async function renderDashboard() {
   const extra = await dbGet('pca:ai-questions') || [];
   document.getElementById('home-total').textContent = seed.length + extra.length;
 
-  // Render Heatmap
+  // Render Heatmap — progress-ring cards, tone-aware (M3 surface containers)
   state.globalDomainStats = await dbGet('pca:domain-mastery') || {};
   const grid = document.getElementById('heatmap-grid');
-  grid.innerHTML = Object.keys(state.globalDomainStats).length === 0 ? '<div style="font-size:13px; color:var(--muted)">Complete a session to generate heatmap.</div>' : 
-    Object.entries(state.globalDomainStats).map(([domain, data]) => {
-      if (data.total < 3) return ''; 
-      const pct = Math.round((data.correct / data.total) * 100);
-      let cls = pct < 60 ? 'red' : pct < 80 ? 'yellow' : 'green';
-      return `<div class="heat-box ${cls}"><div class="heat-title">${domain.replace('Case Study: ', 'CS: ')}</div><div class="heat-pct">${pct}%</div></div>`;
+  const entries = Object.entries(state.globalDomainStats).filter(([, d]) => d && d.total > 0);
+
+  if (entries.length === 0) {
+    grid.innerHTML =
+      `<div class="heat-empty">
+         <div class="heat-empty-ico" data-icon="chart"></div>
+         <div>
+           <strong>Your mastery heatmap is empty.</strong>
+           <p>Finish your first session and we'll start tracking each domain here.</p>
+         </div>
+       </div>`;
+  } else {
+    // Sort weakest-first (only among confident-enough samples), and tail with low-data domains
+    entries.sort((a, b) => {
+      const [, A] = a, [, B] = b;
+      const aPct = A.correct / A.total, bPct = B.correct / B.total;
+      const aLow = A.total < 5, bLow = B.total < 5;
+      if (aLow !== bLow) return aLow ? 1 : -1;          // confident samples first
+      return aPct - bPct;                                // weakest first
+    });
+
+    grid.innerHTML = entries.map(([domain, data]) => {
+      const pct      = Math.round((data.correct / data.total) * 100);
+      const total    = data.total;
+      // Confidence tier — colors only "earned" once we have ≥5 attempts.
+      const lowData  = total < 5;
+      let tier;
+      if (lowData)         tier = 'learning';
+      else if (pct < 60)   tier = 'red';
+      else if (pct < 80)   tier = 'yellow';
+      else                 tier = 'green';
+      const safeDomain = escapeText(domain.replace('Case Study: ', 'CS: '));
+
+      // SVG progress ring (radius 22, circumference ≈ 138.23)
+      const C = 2 * Math.PI * 22;
+      const offset = C * (1 - Math.min(pct, 100) / 100);
+
+      const subLabel = lowData
+        ? `${data.correct}/${total} so far · keep going`
+        : `${data.correct} correct of ${total}`;
+
+      return `<div class="heat-box tier-${tier}" role="group" aria-label="${safeDomain} — ${pct}% mastery (${data.correct} of ${total})">
+        <div class="heat-ring" aria-hidden="true">
+          <svg viewBox="0 0 56 56" width="56" height="56">
+            <circle class="heat-ring-track" cx="28" cy="28" r="22"></circle>
+            <circle class="heat-ring-fill"  cx="28" cy="28" r="22"
+                    stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"></circle>
+          </svg>
+          <span class="heat-ring-pct">${pct}<span class="heat-ring-pct-sym">%</span></span>
+        </div>
+        <div class="heat-body">
+          <div class="heat-title">${safeDomain}</div>
+          <div class="heat-sub">${subLabel}</div>
+        </div>
+      </div>`;
     }).join('');
+  }
 
   // Check Spaced Repetition (Daily Review)
   const srDB = await dbGet('pca:spaced-repetition') || [];
   const now = Date.now();
   state.spacedRepetitionDue = srDB.filter(item => item.nextReview <= now);
-  
+
   const srBanner = document.getElementById('daily-review-banner');
   if (state.spacedRepetitionDue.length > 0) {
     srBanner.style.display = 'block';
@@ -63,13 +117,31 @@ async function renderDashboard() {
   } else {
     srBanner.style.display = 'none';
   }
+
+  // Concept-level mastery panel (#3)
+  if (window.renderConceptPanel) await window.renderConceptPanel('concept-panel');
+
+  // Flagged-questions count on the mode card (#4)
+  const flaggedCountEl = document.getElementById('flagged-count');
+  if (flaggedCountEl) {
+    const flags = (await dbGet('pca:flags')) || [];
+    flaggedCountEl.textContent = flags.length === 0
+      ? "Practice questions you've starred"
+      : flags.length + ' flagged · ready to practice';
+  }
+
+  // Refresh collapsible meta lines (heatmap + concept counts)
+  if (window.refreshCollapsibleMeta) await window.refreshCollapsibleMeta();
 }
 
 // ── Flow Controllers ──
 function selectMode(m) {
   state.mode = m;
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
-  if(document.getElementById(`mode-${m.split('-')[0]}`)) document.getElementById(`mode-${m.split('-')[0]}`).classList.add('selected');
+  // Try the full id first (mode-flagged, mode-adaptive), then fall back to first segment.
+  const full = document.getElementById('mode-' + m);
+  const short = document.getElementById('mode-' + m.split('-')[0]);
+  (full || short)?.classList.add('selected');
 }
 
 async function startSession() {
@@ -77,16 +149,10 @@ async function startSession() {
   const extra = await dbGet('pca:ai-questions') || [];
   const pool = [...seed, ...extra];
 
-  if (state.mode === 'case-study') {
-    const cases = {};
-    pool.filter(q => q.caseContext).forEach(q => { if (!cases[q.domain]) cases[q.domain] = []; cases[q.domain].push(q); });
-    const keys = Object.keys(cases);
-    if(keys.length === 0) return showToast('No case studies found.');
-    state.questions = cases[keys[Math.floor(Math.random() * keys.length)]];
-  } else if (state.mode === 'adaptive') {
+  if (state.mode === 'adaptive') {
     return startAdaptiveSprint(); // AI generation route
   } else {
-    // Standard Exam/Practice: 50 random questions
+    // Standard Exam/Practice: 50 random questions (case-study questions still appear here via their `caseContext`)
     state.questions = shuffle(pool).slice(0, Math.min(50, pool.length));
   }
   
@@ -153,9 +219,14 @@ function initExamUI() {
   
   showScreen('screen-exam');
   document.getElementById('exam-mode-badge').textContent = state.mode.replace('_', ' ').toUpperCase();
-  
+
+  // Reset timer visual state between sessions
+  const tDisp = document.getElementById('timer-display');
+  tDisp.classList.remove('warning', 'danger');
+  tDisp.style.color = '';
+
   if (state.mode === 'exam') startTimer();
-  else { document.getElementById('timer-display').textContent = 'UNTIMED'; document.getElementById('timer-display').style.color = 'var(--green)'; }
+  else { tDisp.textContent = 'UNTIMED'; tDisp.style.color = 'var(--g-green)'; }
   
   renderQuestion();
 }
@@ -167,8 +238,12 @@ function renderQuestion() {
   const q = state.questions[state.current];
   const answered = state.answers[state.current] !== undefined;
 
-  const diffTag = q.diff ? `<span class="tag diff-${q.diff}">${q.diff.toUpperCase()}</span>` : '';
-  document.getElementById('q-meta').innerHTML = `<span class="tag domain">${q.domain}</span>${diffTag}<span class="tag">Q ${state.current + 1} / ${state.questions.length}</span>`;
+  // Whitelist diff so it can't break out of the class attribute, and escape user-derived strings.
+  const safeDiff = ['easy','medium','hard','challenging'].includes(q.diff) ? q.diff : null;
+  const diffTag = safeDiff ? `<span class="tag diff-${safeDiff}">${safeDiff.toUpperCase()}</span>` : '';
+  document.getElementById('q-meta').innerHTML =
+    `<span class="tag domain">${escapeText(q.domain)}</span>${diffTag}` +
+    `<span class="tag">Q ${state.current + 1} / ${state.questions.length}</span>`;
 
   // Case-study context (Markdown-aware, sanitized)
   const caseEl = document.getElementById('case-ctx');
@@ -202,7 +277,8 @@ function renderQuestion() {
         else if (state.answers[state.current] === i) { cls += ' wrong'; keyCls += ' bad'; }
       } else if (state.answers[state.current] === i) { cls += ' selected'; keyCls += ' sel'; }
     }
-    return `<div class="${cls}" onclick="selectOption(${i})"><span class="${keyCls}">${['A','B','C','D'][i]}</span><span class="opt-text">${o}</span></div>`;
+    // q.opts comes from AI-generated content — escape before embedding.
+    return `<div class="${cls}" onclick="selectOption(${i})"><span class="${keyCls}">${['A','B','C','D'][i]}</span><span class="opt-text">${escapeText(o)}</span></div>`;
   }).join('');
 
   // Confidence Tracker (Only in Formative Modes)
@@ -227,8 +303,149 @@ function renderQuestion() {
   document.getElementById('btn-prev').disabled = state.current === 0;
   document.getElementById('btn-next').textContent = state.current === state.questions.length - 1 ? 'Finish →' : 'Next →';
   document.getElementById('exam-qcount').textContent = `Q ${state.current+1} / ${state.questions.length}`;
-  document.getElementById('prog-bar').style.width = ((Object.keys(state.answers).length / state.questions.length) * 100) + '%';
+
+  const answeredPct = (Object.keys(state.answers).length / state.questions.length) * 100;
+  const progBar = document.getElementById('prog-bar');
+  progBar.style.width = answeredPct + '%';
+  const progPct = document.getElementById('progress-pct');
+  if (progPct) progPct.textContent = Math.round(answeredPct) + '%';
+  const progWrap = progBar.parentElement;
+  if (progWrap) progWrap.setAttribute('aria-valuenow', String(Math.round(answeredPct)));
+
+  // Wire the flag button (#4) — re-bound per question render so it always reflects this q.
+  const flagBtn = document.getElementById('flag-btn');
+  if (flagBtn && window.renderFlagControl) {
+    window.renderFlagControl(q.id, flagBtn);
+    flagBtn.onclick = async () => {
+      await window.toggleFlag(q.id);
+      // Refresh Review Later pill so it reflects the new state immediately.
+      if (window.refreshReviewLaterPill) window.refreshReviewLaterPill();
+    };
+  }
+
+  // Refresh the "Review Later" pill count + re-render panel if it's open.
+  if (window.refreshReviewLaterPill) window.refreshReviewLaterPill();
+
+  // Pacing tick on render (#6)
+  if (window.updatePacing) window.updatePacing();
 }
+
+// ════════════════════════════════════════════════════════════════
+//  Save for Later & Review panel — exam/timed mode helper
+// ════════════════════════════════════════════════════════════════
+function _flaggedIndicesInSession() {
+  const flags = (window.getFlagsCache && window.getFlagsCache()) || [];
+  const set = new Set(flags);
+  const out = [];
+  if (!state.questions) return out;
+  for (let i = 0; i < state.questions.length; i++) {
+    if (set.has(state.questions[i].id)) out.push(i);
+  }
+  return out;
+}
+
+function refreshReviewLaterPill() {
+  const pill = document.getElementById('review-later-pill');
+  const badge = document.getElementById('review-count-badge');
+  if (!pill || !badge) return;
+  const idxs = _flaggedIndicesInSession();
+  badge.textContent = String(idxs.length);
+  pill.classList.toggle('has-items', idxs.length > 0);
+  pill.setAttribute('aria-label', idxs.length === 0
+    ? 'No questions saved for later'
+    : idxs.length + ' question' + (idxs.length === 1 ? '' : 's') + ' saved for later');
+  // If the panel is open, re-render its body so the list stays current.
+  const panel = document.getElementById('review-later-panel');
+  if (panel && panel.classList.contains('is-open')) _renderReviewLaterList();
+}
+
+function _renderReviewLaterList() {
+  const listEl = document.getElementById('review-later-list');
+  const subEl  = document.getElementById('review-later-sub');
+  if (!listEl) return;
+  const idxs = _flaggedIndicesInSession();
+  if (subEl) {
+    subEl.textContent = idxs.length === 0
+      ? 'Tap the Flag icon on any question to add it here'
+      : idxs.length + ' flagged in this session · ' + Object.keys(state.answers || {}).length + ' answered overall';
+  }
+  if (idxs.length === 0) {
+    listEl.innerHTML = '<div class="review-later-empty">' +
+      '<svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" aria-hidden="true">' +
+        '<path d="M12.36 6 12.76 8H18v6h-3.36l-.4-2H7V6h5.36zM14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6L14 4z"/>' +
+      '</svg>' +
+      '<p>Nothing saved for later yet</p>' +
+      '<p style="font-size:12px; opacity:0.75; margin-top:4px;">Tap the <strong>Flag</strong> button on any question to bookmark it for review.</p>' +
+      '</div>';
+    return;
+  }
+  const cur = state.current;
+  const html = idxs.map((idx) => {
+    const q = state.questions[idx];
+    const isCurrent  = idx === cur;
+    const answered   = state.answers && state.answers[idx] !== undefined && state.answers[idx] !== null;
+    const skipped    = state.answers && state.answers[idx] === null;
+    const statusCls  = answered ? 'answered' : (skipped ? 'unanswered' : 'unanswered');
+    const statusText = answered ? 'Answered' : (skipped ? 'Skipped' : 'Not yet');
+    const text = (q.text || '').replace(/<[^>]+>/g, '');
+    return '<button class="review-later-item' + (isCurrent ? ' is-current' : '') +
+      '" type="button" role="listitem" data-idx="' + idx + '" onclick="jumpToReviewQuestion(' + idx + ')">' +
+      '<div class="review-later-item-top">' +
+        '<span class="review-later-item-num">Q ' + (idx + 1) + '</span>' +
+        '<span class="review-later-domain">' + escapeText(q.domain || '') + '</span>' +
+        '<span class="review-later-status ' + statusCls + '">' + statusText + '</span>' +
+      '</div>' +
+      '<div class="review-later-item-text">' + escapeText(text.slice(0, 140)) + (text.length > 140 ? '…' : '') + '</div>' +
+    '</button>';
+  }).join('');
+  listEl.innerHTML = html;
+}
+
+function openReviewLater() {
+  const panel   = document.getElementById('review-later-panel');
+  const overlay = document.getElementById('review-later-overlay');
+  if (!panel) return;
+  _renderReviewLaterList();
+  panel.classList.add('is-open');
+  panel.setAttribute('aria-hidden', 'false');
+  if (overlay) {
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+  // Esc to close
+  document.addEventListener('keydown', _reviewLaterEscHandler);
+}
+
+function closeReviewLater() {
+  const panel   = document.getElementById('review-later-panel');
+  const overlay = document.getElementById('review-later-overlay');
+  if (panel) {
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  if (overlay) {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+  document.removeEventListener('keydown', _reviewLaterEscHandler);
+}
+
+function _reviewLaterEscHandler(e) {
+  if (e.key === 'Escape') closeReviewLater();
+}
+
+function jumpToReviewQuestion(idx) {
+  if (!state.questions || idx < 0 || idx >= state.questions.length) return;
+  state.current = idx;
+  renderQuestion();
+  closeReviewLater();
+}
+
+// Expose globally so HTML inline handlers + features.js callers can reach them.
+window.openReviewLater       = openReviewLater;
+window.closeReviewLater      = closeReviewLater;
+window.jumpToReviewQuestion  = jumpToReviewQuestion;
+window.refreshReviewLaterPill = refreshReviewLaterPill;
 
 function setConfidence(val) {
   state.confidence[state.current] = val;
@@ -280,6 +497,11 @@ function startTimer() {
     state.timerSeconds--;
     const el = document.getElementById('timer-display');
     el.textContent = `${Math.floor(state.timerSeconds/3600)}:${String(Math.floor((state.timerSeconds%3600)/60)).padStart(2,'0')}:${String(state.timerSeconds%60).padStart(2,'0')}`;
+    // Color cue
+    if (state.timerSeconds <= 600) el.classList.add('danger');
+    else if (state.timerSeconds <= 1800) { el.classList.remove('danger'); el.classList.add('warning'); }
+    // Pacing every 5s to keep the indicator current (#6)
+    if (state.timerSeconds % 5 === 0 && window.updatePacing) window.updatePacing();
     if (state.timerSeconds <= 0) { clearInterval(state.timerInterval); confirmFinish(true); }
   }, 1000);
 }
@@ -410,6 +632,19 @@ async function saveSession(score, total, answers, questions) {
     const history = await dbGet('pca:history') || [];
     history.unshift(session); // Add newest to the top
     await dbSet('pca:history', history);
+
+    // #3 — Roll up concept mastery from this session
+    if (window.recordConceptResults) {
+      try { await window.recordConceptResults(questions, answers); } catch(e) {}
+    }
+
+    // #10 — Keep history table bounded
+    if (window.pruneHistory) {
+      try { await window.pruneHistory(); } catch(e) {}
+    }
+
+    // Mark first-run onboarding satisfied once a session has been saved
+    await dbSet('pca:onboarded', true);
 
     const reviewBtn = document.getElementById('review-btn-home');
     if(reviewBtn) reviewBtn.style.display = 'inline';
