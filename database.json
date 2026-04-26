@@ -1819,6 +1819,216 @@
       ],
       "answer": 1,
       "explanation": "NCC is the supported way to get transitive routing in GCP \u2014 VPC Peering is non-transitive by design. With Cross-Cloud Network patterns, AWS/Azure attach as hybrid spokes via HA VPN or Interconnect, and Google's backbone carries inter-region traffic between GCP spokes. Full mesh VPN explodes operationally. Shared VPC doesn't span clouds. Peering mesh isn't transitive.\n\n\ud83d\udd0d Targeted Search: 'Network Connectivity Center hub VPC spokes', 'Cross-Cloud Network NCC hybrid spoke'."
+    },
+    {
+      "id": "q131",
+      "domain": "Designing & Planning",
+      "diff": "challenging",
+      "text": "A retailer runs PostgreSQL on bare-metal in three colocation facilities and wants to extend their footprint to GCP without changing the database engine. Requirements: (a) the same PostgreSQL-compatible engine running on-prem AND in GCP managed; (b) on-prem instance must benefit from Google's perf optimizations and analytical extensions; (c) one operational story (backups, monitoring) wherever it runs. Which option is correct?",
+      "opts": [
+        "Cloud SQL for PostgreSQL in GCP and self-managed Postgres on-prem; sync via DMS",
+        "**AlloyDB Omni** running on-prem (containers/VMs in colos) for the same AlloyDB engine + columnar engine + index advisor as managed AlloyDB in GCP, paired with **AlloyDB** in GCP for the cloud footprint \u2014 unified engine, common ops",
+        "Spanner with PostgreSQL interface on-prem and Spanner in GCP",
+        "CockroachDB self-managed on-prem and AlloyDB in GCP"
+      ],
+      "answer": 1,
+      "explanation": "AlloyDB Omni is the downloadable form of the AlloyDB engine certified to run on any x86 hardware (on-prem, other clouds), so the engine, columnar accelerator, and index advisor match the managed GCP AlloyDB instance. Cloud SQL+OSS PG on-prem are different binaries. Spanner is not Postgres-compatible at the engine level. CockroachDB is a different engine entirely.\n\n\ud83d\udd0d Targeted Search: 'AlloyDB Omni on-prem', 'AlloyDB columnar engine Omni'."
+    },
+    {
+      "id": "q132",
+      "domain": "Managing Implementation",
+      "diff": "hard",
+      "text": "A media pipeline must process 50,000 video files nightly. Each file takes 3-8 min of CPU work. Requirements: (a) elastic parallelism up to 200 concurrent workers, (b) per-task retry with exponential backoff, (c) no servers to manage, (d) result of each task written to GCS. Which design fits best?",
+      "opts": [
+        "Cloud Functions (1st gen) triggered per file via Pub/Sub",
+        "**Cloud Run jobs** with `--parallelism=200 --task-count=50000` and per-task retries; trigger the job once per night via Cloud Scheduler \u2014 each task is a container instance that processes one file and writes to GCS",
+        "GKE Autopilot Deployment with HPA on Pub/Sub backlog",
+        "Dataflow batch pipeline with a custom DoFn that calls FFmpeg"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Run jobs are purpose-built for parallel batch task execution: parallelism, task count, retries, and timeouts are first-class flags. Functions 1st gen has 9-min timeout and lower concurrency control. GKE Autopilot works but is heavier than needed and doesn't natively give per-task retry semantics. Dataflow can do it but is overkill for embarrassingly-parallel CPU jobs and FFmpeg-in-DoFn is awkward.\n\n\ud83d\udd0d Targeted Search: 'Cloud Run jobs parallelism task-count', 'Cloud Run jobs retry'."
+    },
+    {
+      "id": "q133",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A telemetry topic on Pub/Sub publishes raw JSON from 12 device generations. Three downstream subscribers each need a slightly different normalized shape (rename fields, drop PII). Today every subscriber re-implements the transform in code and they drift. Requirements: (a) normalize once at the topic, (b) zero subscriber-side glue, (c) no Dataflow job. Which option is correct?",
+      "opts": [
+        "Add a Cloud Run service between Pub/Sub and each subscriber",
+        "Use Pub/Sub **Single Message Transforms (SMT)** at the topic / subscription level to apply lightweight normalization (jq-style) inline \u2014 subscribers consume the already-normalized payload with no glue or Dataflow job",
+        "Move to Kafka with Kafka Streams transforms",
+        "Push raw events to BigQuery and let subscribers query a view"
+      ],
+      "answer": 1,
+      "explanation": "Pub/Sub Single Message Transforms (SMT) let you declaratively shape messages at the topic or subscription, eliminating drift across subscribers without a Dataflow/Cloud Run hop. The other options either add infra (Cloud Run, Kafka, Dataflow) or change the consumption model (BigQuery query for a streaming subscriber).\n\n\ud83d\udd0d Targeted Search: 'Pub/Sub Single Message Transforms', 'Pub/Sub SMT subscription'."
+    },
+    {
+      "id": "q134",
+      "domain": "Reliability & Operations",
+      "diff": "challenging",
+      "text": "An orchestration must call a third-party reconciliation API that may take up to 6 hours per run, then resume the pipeline when it finishes. Requirements: (a) no compute idling for 6 hours, (b) durable state across restarts, (c) retries on transient failures, (d) callback resumes the exact pipeline step. Which design is correct?",
+      "opts": [
+        "A Cloud Run service that does `time.sleep(6h)` and then resumes",
+        "**Workflows** with a `callback` step that suspends the execution and waits up to 1 year; the third-party calls back via the generated callback URL when the job finishes \u2014 no idle compute, durable state, automatic retries, exact resume",
+        "Cloud Composer DAG with `time.sleep(60*60*6)` in a PythonOperator",
+        "Cloud Tasks queue with a 6-hour delay"
+      ],
+      "answer": 1,
+      "explanation": "Workflows callbacks are designed exactly for this: the workflow execution is suspended (no compute charged for the wait), state is durable, and resumption uses a one-time callback URL the third party hits when ready. The other options burn compute (Cloud Run/Composer sleep) or don't address resumption (Cloud Tasks just delays delivery, doesn't resume a workflow).\n\n\ud83d\udd0d Targeted Search: 'Workflows callbacks suspend', 'Workflows wait for callback URL'."
+    },
+    {
+      "id": "q135",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A GKE platform has 400 nodes; each node has 4-8 PVs of various sizes (10 GB to 2 TB). Total provisioned PD capacity is 600 TB but actual used is 240 TB. Finance wants to cut waste WITHOUT forcing app teams to right-size. Which option is correct?",
+      "opts": [
+        "Force a manual right-sizing campaign across all 400 teams",
+        "Migrate all PVs to **Hyperdisk Storage Pools** (advanced capacity / advanced performance) and create PVs from the pool \u2014 capacity and IOPS are pooled and only actual usage is billed, so over-provisioned PVs no longer waste capacity",
+        "Move all PVs to Filestore Basic and share volumes across pods",
+        "Tier cold PVs to GCS via gcsfuse"
+      ],
+      "answer": 1,
+      "explanation": "Hyperdisk Storage Pools let you provision a pool of capacity (and optionally IOPS/throughput) and carve PVs out of it; you pay for actual aggregate use, not the sum of allocations \u2014 directly attacking the 600 TB-vs-240 TB gap with no app changes. Filestore Basic changes the storage model. gcsfuse is object storage, not block. Manual right-sizing is the painful workaround the question rules out.\n\n\ud83d\udd0d Targeted Search: 'Hyperdisk Storage Pools GKE', 'Hyperdisk advanced capacity pool'."
+    },
+    {
+      "id": "q136",
+      "domain": "Security & Compliance",
+      "diff": "challenging",
+      "text": "A `prod-data` project sits inside a VPC SC perimeter. A specific BigQuery dataset must be queryable from a `partner-analytics` project that is OUTSIDE the perimeter, but ONLY by users with the principal `group:partner-analysts@external.com` AND only via the BigQuery API. All other access from outside the perimeter must remain blocked. Which configuration is correct?",
+      "opts": [
+        "Add `partner-analytics` project to the perimeter",
+        "Add a **VPC SC ingress rule** on the perimeter scoped to: identityType=`ANY_IDENTITY` filtered to that group, sources=`projects/partner-analytics`, services=`bigquery.googleapis.com`, methods=`*` \u2014 surgical least-privilege ingress that doesn't widen the perimeter",
+        "Use Authorized Views and grant the group viewer at the dataset",
+        "Disable VPC SC and rely on IAM only"
+      ],
+      "answer": 1,
+      "explanation": "VPC SC ingress rules are exactly the surgical mechanism: the perimeter stays closed by default, but a specific identity from a specific source project can call a specific service. Adding the partner project to the perimeter expands the trust boundary too broadly. Authorized Views still get blocked by VPC SC at the API. Disabling VPC SC removes the control entirely.\n\n\ud83d\udd0d Targeted Search: 'VPC SC ingress rules identity type', 'VPC Service Controls ingress policy BigQuery'."
+    },
+    {
+      "id": "q137",
+      "domain": "Analyzing & Optimizing",
+      "diff": "hard",
+      "text": "A reporting layer in BigQuery needs to JOIN a 5 TB customer fact table (in BigQuery) with a fast-moving `customer_status` table that lives in Cloud Spanner (single source of truth, OLTP). Requirements: (a) always-fresh status reads, (b) no ETL job copying Spanner to BigQuery, (c) standard SQL. Which option is correct?",
+      "opts": [
+        "Schedule an hourly Dataflow job to copy Spanner \u2192 BigQuery",
+        "Use a BigQuery **federated (external) query** with the `EXTERNAL_QUERY` function targeting a **Spanner external connection** \u2014 reads live Spanner data inline in standard SQL, no copy, no scheduled job",
+        "Replicate Spanner to BigQuery via Datastream",
+        "Dump Spanner to GCS hourly and define a BigLake table"
+      ],
+      "answer": 1,
+      "explanation": "BigQuery federated queries (EXTERNAL_QUERY) over a Cloud Spanner connection let standard SQL reach into Spanner at query time \u2014 always-fresh, no ETL. Dataflow/Datastream/GCS-export options all introduce a copy and a freshness lag, violating (a)/(b).\n\n\ud83d\udd0d Targeted Search: 'BigQuery EXTERNAL_QUERY Spanner', 'BigQuery federated query Cloud Spanner'."
+    },
+    {
+      "id": "q138",
+      "domain": "Security & Compliance",
+      "diff": "challenging",
+      "text": "Three banks want to jointly compute a fraud-network score across their combined transaction data WITHOUT any bank ever seeing another's raw rows, and with cryptographic attestation that only the agreed-upon code processed the data. Which design is correct?",
+      "opts": [
+        "Each bank uploads to a shared GCS bucket and runs Spark over it",
+        "Use a **Confidential Space** workload running on a Confidential VM (TEE) where each bank grants access to its dataset ONLY to a workload whose attestation matches a signed agreed-upon image hash; the workload computes the score, no bank sees others' raw data",
+        "Use BigQuery with row-level security and CMEK",
+        "Run the join in a multi-tenant GKE cluster with separate namespaces"
+      ],
+      "answer": 1,
+      "explanation": "Confidential Space is purpose-built for this 'clean room' pattern: data owners bind access to attestation tokens proving the consumer is a specific signed workload running in a TEE. RLS+CMEK still lets a privileged operator see rows. Shared GCS / multi-tenant GKE provide no cryptographic guarantee that only the agreed code processed the data.\n\n\ud83d\udd0d Targeted Search: 'Confidential Space attestation', 'Confidential Space clean room data sharing'."
+    },
+    {
+      "id": "q139",
+      "domain": "Reliability & Operations",
+      "diff": "challenging",
+      "text": "A stateful compute workload runs on GCE in us-central1 with 40 PDs (8 TB total). DR requires: (a) RPO \u2264 1 minute to us-east1, (b) RTO \u2264 15 minutes, (c) crash-consistent across all 40 PDs simultaneously, (d) no application-level replication change. Which option is correct?",
+      "opts": [
+        "Hourly PD snapshots to a multi-region bucket and rsync",
+        "**Persistent Disk Async Replication (PD ASR)** with a **consistency group** that replicates all 40 PDs to us-east1 atomically with sub-minute RPO; on failover, attach the replicas to standby VMs",
+        "Use Backup and DR Service with daily incremental backups",
+        "Migrate to Hyperdisk Balanced and rely on Google's regional redundancy"
+      ],
+      "answer": 1,
+      "explanation": "PD Async Replication with consistency groups is the only option that delivers crash-consistent multi-disk replication at minute-scale RPO without app changes. Snapshots/Backup-and-DR have hour+ RPO. Hyperdisk Balanced is zonal; no built-in cross-region replication of the disk itself.\n\n\ud83d\udd0d Targeted Search: 'Persistent Disk Async Replication consistency group', 'PD ASR cross-region DR'."
+    },
+    {
+      "id": "q140",
+      "domain": "Security & Compliance",
+      "diff": "hard",
+      "text": "Security must collect every Admin Activity, Data Access, and Policy Denied audit log from 380 projects under a folder for SIEM ingestion. Requirements: (a) one place, (b) include future projects automatically, (c) exclude noisy `storage.objects.get` Data Access logs, (d) immutable retention 7 years for compliance. Which option is correct?",
+      "opts": [
+        "Per-project sinks to a central Pub/Sub topic, manually onboard new projects",
+        "A **folder-level aggregated log sink** with `includeChildren=true` filtering audit logs (with an exclusion for `storage.objects.get`) routed to a **Cloud Logging log bucket** in another project with **CMEK + locked retention 7 years**; SIEM reads via Pub/Sub export from that bucket",
+        "Org policy `requireOsLogin` and let SIEM scrape each project",
+        "Stackdriver Workspace with retention overrides"
+      ],
+      "answer": 1,
+      "explanation": "An aggregated sink at the folder with includeChildren picks up all current AND future projects with one config; the filter and exclusion handle the storage.objects.get noise; routing to a log bucket with locked retention satisfies immutable 7-year compliance. Per-project sinks fail (b). Org policies don't centralize logs. Stackdriver Workspace is legacy and lacks immutable retention.\n\n\ud83d\udd0d Targeted Search: 'aggregated log sink folder includeChildren', 'Cloud Logging bucket locked retention'."
+    },
+    {
+      "id": "q141",
+      "domain": "Managing Implementation",
+      "diff": "challenging",
+      "text": "An ML team retrains a recommendation model weekly. Requirements: (a) reproducible training pipeline with versioned components, (b) automatic registration of trained models, (c) automatic monitoring of feature skew and prediction drift on the deployed endpoint, (d) one-click rollback to a prior model version. Which combination is correct?",
+      "opts": [
+        "Cloud Composer DAG that calls AI Platform legacy training",
+        "**Vertex AI Pipelines** (KFP/TFX) for the reproducible training pipeline, register outputs into the **Vertex AI Model Registry**, deploy from the Registry to a **Vertex AI Endpoint** with **Vertex AI Model Monitoring** enabled (training-serving skew + prediction drift alerts), and use Endpoint traffic-split for one-click rollback",
+        "Cloud Functions triggered by GCS uploads to retrain and Cloud Run to serve",
+        "Custom GKE pipeline with TFX and Prometheus metrics"
+      ],
+      "answer": 1,
+      "explanation": "Vertex Pipelines + Model Registry + Endpoints + Model Monitoring is the integrated MLOps stack that delivers reproducible runs, versioned model lineage, drift/skew monitoring, and traffic-split rollback in one platform. Composer/Functions/GKE custom stacks miss the Registry+Monitoring integration and lineage tracking.\n\n\ud83d\udd0d Targeted Search: 'Vertex AI Model Monitoring drift', 'Vertex AI Model Registry endpoint traffic split'."
+    },
+    {
+      "id": "q142",
+      "domain": "Managing & Provisioning",
+      "diff": "hard",
+      "text": "A migration moves 80 TB of objects from AWS S3 (us-east-1) to GCS (us-central1). Requirements: (a) parallelism, (b) only objects newer than 90 days, (c) verifiable integrity per object, (d) repeatable schedule for the next 6 weeks until cutover. Which option is correct?",
+      "opts": [
+        "`gsutil rsync` from a single VM",
+        "**Storage Transfer Service** with an S3 source, a transfer schedule (weekly), include-prefix or filter on `lastModifiedSince`, and **transfer manifest** + integrity checks; STS handles parallelism and incremental transfers automatically",
+        "AWS DataSync to S3-compatible GCS endpoint",
+        "Custom Dataflow pipeline reading from S3"
+      ],
+      "answer": 1,
+      "explanation": "Storage Transfer Service is the supported managed pipeline for cross-cloud bulk transfer with scheduling, include filters (lastModifiedSince), per-object integrity, and built-in parallelism. gsutil from one VM is not parallel at this scale. AWS DataSync doesn't target GCS natively. Custom Dataflow is overengineering.\n\n\ud83d\udd0d Targeted Search: 'Storage Transfer Service S3 to GCS', 'Storage Transfer Service manifest filter'."
+    },
+    {
+      "id": "q143",
+      "domain": "Security & Compliance",
+      "diff": "challenging",
+      "text": "Across 14 GKE clusters in 3 regions, security requires: (a) all east-west traffic between services is mTLS, (b) per-service authorization policies (which caller may call which method), (c) SPIFFE-style identities tied to KSAs, (d) no per-team Istio install/upgrade. Which option is correct?",
+      "opts": [
+        "Enforce TLS at the ingress only and rely on namespace isolation",
+        "Enable **Cloud Service Mesh (managed)** \u2014 the managed control plane installs sidecars/Anthos Service Mesh CRDs across the fleet and gives mTLS everywhere, AuthorizationPolicy resources for per-service rules, and SPIFFE identities derived from KSAs; no per-team upgrade burden",
+        "Self-manage Linkerd on each cluster",
+        "Use Network Policies and Cloud Armor between services"
+      ],
+      "answer": 1,
+      "explanation": "Cloud Service Mesh (managed) is the GCP-managed Anthos Service Mesh that delivers mTLS, per-service AuthorizationPolicy, and SPIFFE identities tied to KSAs across a fleet \u2014 with the control plane managed by Google, so there's no per-team install/upgrade tax. NetworkPolicy+Cloud Armor doesn't give per-method authorization or mTLS identity. Self-managed Linkerd violates (d). Ingress-only TLS misses east-west.\n\n\ud83d\udd0d Targeted Search: 'Cloud Service Mesh managed control plane', 'Anthos Service Mesh AuthorizationPolicy SPIFFE'."
+    },
+    {
+      "id": "q144",
+      "domain": "Reliability & Operations",
+      "diff": "hard",
+      "text": "A high-throughput Cloud SQL for PostgreSQL primary serves a global SaaS. Requirements: (a) maintenance updates with downtime under 10 seconds (vs. ~1 min on Standard), (b) faster failover, (c) 100K+ QPS read scale via replicas, (d) keep the same Cloud SQL operational model. Which option is correct?",
+      "opts": [
+        "Migrate to AlloyDB",
+        "Upgrade the instance to **Cloud SQL Enterprise Plus** edition for near-zero-downtime maintenance, faster failover, and use Read Replicas for read scale \u2014 same Cloud SQL operational model preserved",
+        "Move to Spanner with the PostgreSQL interface",
+        "Add a PgBouncer pool and accept the existing maintenance window"
+      ],
+      "answer": 1,
+      "explanation": "Cloud SQL Enterprise Plus is the higher-tier edition specifically introducing near-zero-downtime planned maintenance and faster failover while keeping the same Cloud SQL semantics and tooling. AlloyDB and Spanner are different engines/operational stories. PgBouncer doesn't address maintenance downtime.\n\n\ud83d\udd0d Targeted Search: 'Cloud SQL Enterprise Plus near-zero downtime maintenance', 'Cloud SQL editions Enterprise Plus'."
+    },
+    {
+      "id": "q145",
+      "domain": "Reliability & Operations",
+      "diff": "challenging",
+      "text": "A regulated GKE workload includes statefulsets, ConfigMaps, Secrets, PVs, CRDs, and a sibling Cloud SQL DB. DR requires: (a) cluster-state + PV data backed up together, (b) restore to a different region into a new cluster, (c) policy-driven schedule (nightly, weekly), (d) one Google-managed solution that covers cluster state. Which option is correct?",
+      "opts": [
+        "Velero on a self-managed bucket per cluster",
+        "**Backup for GKE** \u2014 the managed service that backs up Kubernetes resources (including CRDs) AND PV data on a policy schedule, supports cross-project / cross-region restore, and integrates with the GKE fleet; pair with a Cloud SQL backup plan for the DB",
+        "etcd snapshots from the control plane",
+        "Helm chart re-render plus PD snapshots"
+      ],
+      "answer": 1,
+      "explanation": "Backup for GKE is the GCP-managed backup service for GKE clusters that handles K8s resources + PV data with policy-driven schedules and cross-region restore. Velero requires self-management. etcd snapshots aren't supported on GKE control planes (and don't include PVs). Helm-rerender + PD snapshots loses CRDs and runtime state.\n\n\ud83d\udd0d Targeted Search: 'Backup for GKE managed service', 'Backup for GKE cross-region restore'."
     }
   ],
   "pca:domain-mastery": {},
